@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime
-from datetime import datetime
+from sqlalchemy import Column, Integer, String, Text, DateTime, func
 from database import Base
 
 class TicketModel(Base):
@@ -24,5 +23,6 @@ class TicketModel(Base):
     sap_material_id = Column(String(50), nullable=True)   # Material Number
     sap_status = Column(String(50), nullable=True)        # e.g., CREATED, GOODS_RECEIVED
     
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
