@@ -1,4 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
@@ -15,6 +18,25 @@ app = FastAPI(
     description="AI-powered triage, lifecycle management, and SAP MM integration / Motor de triaje y gestión de incidencias con SAP MM",
     version="0.2.0"
 )
+
+# --- Configuración de Plantillas / Templates ---
+templates = Jinja2Templates(directory="templates")
+
+
+# --- CORS Middleware / Configuración de CORS ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permite peticiones desde cualquier origen (Lovable, localhost, etc.)
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite GET, POST, PATCH, OPTIONS, etc.
+    allow_headers=["*"],
+)
+
+# --- Ruta Raíz / Frontend UI ---
+@app.get("/", response_class=HTMLResponse)
+def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
 
 # --- Pydantic Schemas / Esquemas Pydantic ---
 

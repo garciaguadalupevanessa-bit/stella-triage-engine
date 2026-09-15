@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stella Triage Engine - Control Panel</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-950/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                    <i data-lucide="cpu" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-none">Stella Triage Engine</h1>
+                    <span class="text-xs text-slate-400">AI Triage & SAP MM Lifecycle</span>
+                </div>
+            </div>
+            
+            <!-- Role Tabs -->
+            <nav class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+                <button onclick="switchTab('user')" id="tab-user" class="px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-indigo-600 text-white">
+                    <i data-lucide="user" class="w-4 h-4"></i>
+                    <span>Usuario</span>
+                </button>
+                <button onclick="switchTab('admin')" id="tab-admin" class="px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                    <span>Admin Review</span>
+                </button>
+                <button onclick="switchTab('tech')" id="tab-tech" class="px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white">
+                    <i data-lucide="wrench" class="w-4 h-4"></i>
+                    <span>Técnico & SAP MM</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+
+        <!-- USER VIEW -->
+        <section id="view-user" class="space-y-6">
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center space-x-2">
+                    <i data-lucide="plus-circle" class="text-indigo-400"></i>
+                    <span>Crear Nueva Incidencia</span>
+                </h2>
+                <form id="create-ticket-form" onsubmit="handleCreateTicket(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Descripción del problema</label>
+                        <textarea id="query-input" required rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="Ej: El compresor de aire acondicionado hace un ruido extraño y no enfria..."></textarea>
+                    </div>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-2.5 rounded-xl transition flex items-center space-x-2">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span>Enviar Incidencia</span>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ADMIN VIEW -->
+        <section id="view-admin" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold flex items-center space-x-2">
+                    <i data-lucide="shield" class="text-amber-400"></i>
+                    <span>Verificación Humana (Human-in-the-Loop)</span>
+                </h2>
+                <button onclick="loadTickets()" class="text-slate-400 hover:text-white flex items-center space-x-1 text-sm">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span>Actualizar</span>
+                </button>
+            </div>
+            <div id="admin-tickets-container" class="grid gap-4"></div>
+        </section>
+
+        <!-- TECH / SAP MM VIEW -->
+        <section id="view-tech" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold flex items-center space-x-2">
+                    <i data-lucide="boxes" class="text-emerald-400"></i>
+                    <span>Resolución Técnica e Integración SAP MM</span>
+                </h2>
+                <button onclick="loadTickets()" class="text-slate-400 hover:text-white flex items-center space-x-1 text-sm">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span>Actualizar</span>
+                </button>
+            </div>
+            <div id="tech-tickets-container" class="grid gap-4"></div>
+        </section>
+
+    </main>
+
+    <script>
+        const API_URL = window.location.origin;
+
+        function switchTab(role) {
+            ['user', 'admin', 'tech'].forEach(r => {
+                document.getElementById(`view-${r}`).classList.add('hidden');
+                document.getElementById(`tab-${r}`).className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white';
+            });
+            document.getElementById(`view-${role}`).classList.remove('hidden');
+            document.getElementById(`tab-${role}`).className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-indigo-600 text-white';
+            loadTickets();
+        }
+
+        async function loadTickets() {
+            try {
+                const res = await fetch(`${API_URL}/tickets`);
+                const tickets = await res.json();
+                renderAdminTickets(tickets);
+                renderTechTickets(tickets);
+            } catch (err) {
+                console.error("Error cargando tickets:", err);
+            }
+        }
+
+        async function handleCreateTicket(e) {
+            e.preventDefault();
+            const query = document.getElementById('query-input').value;
+            await fetch(`${API_URL}/tickets`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, user_id: 'usr_vanessa' })
+            });
+            document.getElementById('query-input').value = '';
+            alert('Incidencia creada correctamente');
+            switchTab('admin');
+        }
+
+        function renderAdminTickets(tickets) {
+            const container = document.getElementById('admin-tickets-container');
+            const pending = tickets.filter(t => t.status === 'PENDING_ADMIN_REVIEW');
+            
+            if (pending.length === 0) {
+                container.innerHTML = `<p class="text-slate-500 text-sm">No hay incidencias pendientes de revisión.</p>`;
+                return;
+            }
+
+            container.innerHTML = pending.map(t => `
+                <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-3">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id}</span>
+                        <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-md">${t.status}</span>
+                    </div>
+                    <p class="text-slate-200 font-medium">${t.query}</p>
+                    <div class="text-xs text-slate-400 bg-slate-900/50 p-3 rounded-lg border border-slate-800 space-y-1">
+                        <div><strong>Categoría sugerida por IA:</strong> ${t.category}</div>
+                        <div><strong>Urgencia:</strong> ${t.urgency}</div>
+                    </div>
+                    <button onclick="reviewTicket(${t.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
+                        Aprobar y Asignar a Técnico
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function reviewTicket(id) {
+            await fetch(`${API_URL}/tickets/${id}/review`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ approved: true })
+            });
+            loadTickets();
+        }
+
+        function renderTechTickets(tickets) {
+            const container = document.getElementById('tech-tickets-container');
+            const techTickets = tickets.filter(t => ['ASSIGNED_TO_TECHNICAL', 'AWAITING_SAP_STOCK', 'RESOLVED'].includes(t.status));
+
+            container.innerHTML = techTickets.map(t => `
+                <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-3">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id}</span>
+                        <span class="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded-md">${t.status}</span>
+                    </div>
+                    <p class="text-slate-200 font-medium">${t.query}</p>
+                    
+                    ${t.sap_solped_id ? `
+                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-lg text-xs space-y-1">
+                            <div class="text-emerald-400 font-semibold flex items-center space-x-1">
+                                <i data-lucide="package" class="w-3.5 h-3.5"></i>
+                                <span>SAP MM SolPed: #${t.sap_solped_id}</span>
+                            </div>
+                            <div class="text-slate-400">Material: ${t.sap_material_id}</div>
+                            <div class="text-slate-400">Estado SAP: ${t.sap_status}</div>
+                        </div>
+                    ` : ''}
+
+                    <div class="flex space-x-2 pt-2">
+                        ${t.status === 'ASSIGNED_TO_TECHNICAL' ? `
+                            <button onclick="requestSapParts(${t.id})" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition">
+                                Pedir Recambio a SAP MM (SolPed)
+                            </button>
+                        ` : ''}
+                        ${t.status === 'AWAITING_SAP_STOCK' ? `
+                            <button onclick="receiveGoods(${t.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition">
+                                Registrar MIGO (Mov 101) & Cerrar
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function requestSapParts(id) {
+            await fetch(`${API_URL}/tickets/${id}/action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action_type: 'REQUEST_PARTS', material_id: 'MAT-COMPRESOR-AC' })
+            });
+            loadTickets();
+        }
+
+        async function receiveGoods(id) {
+            await fetch(`${API_URL}/tickets/${id}/sap-goods-receipt`, {
+                method: 'POST'
+            });
+            loadTickets();
+        }
+
+        // Inicializar
+        lucide.createIcons();
+        loadTickets();
+    </script>
+</body>
+</html>
