@@ -14,15 +14,16 @@ class TicketModel(Base):
     department = Column(String(100), nullable=True)
     summary = Column(Text, nullable=True)
     
-    # Workflow Status / Estado del Flujo de Trabajo
+    # Workflow Status
     # Options: PENDING_ADMIN_REVIEW, ASSIGNED_TO_TECHNICAL, RESOLVED, AWAITING_SAP_STOCK
     status = Column(String(50), default="PENDING_ADMIN_REVIEW")
     
-    # SAP MM Integration Fields / Campos de Integración SAP MM
-    sap_solped_id = Column(String(50), nullable=True)     # Purchase Requisition / SolPed
+    # SAP MM Integration Fields
+    sap_solped_id = Column(String(50), nullable=True)     # SolPed
     sap_material_id = Column(String(50), nullable=True)   # Material Number
-    sap_status = Column(String(50), nullable=True)        # e.g., CREATED, GOODS_RECEIVED
+    sap_status = Column(String(50), nullable=True)        # e.g., CREATED, GOODS_RECEIVED_MIGO_101
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
     
