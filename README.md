@@ -80,4 +80,4 @@
 - **Ticket Model Fields / Campos del Modelo:** 
   `id`, `user_id`, `query`, `category`, `urgency`, `department`, `summary`, `status`, `sap_solped_id`, `sap_material_id`, `sap_status`, `created_at`, `updated_at`.
 
-
+git add README.md database.py models.py seed_data.py .gitignore requirements.txt
