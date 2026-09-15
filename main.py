@@ -3,42 +3,35 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 import random
 
 from database import engine, get_db, Base
 from models import TicketModel
 
-# Initialize Database Tables / Inicializar tablas de BD
+# Inicializar tablas de BD
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Stella Triage Engine",
-    description="AI-powered triage, lifecycle management, and SAP MM integration / Motor de triaje y gestión de incidencias con SAP MM",
+    description="AI-powered triage, lifecycle management, and SAP MM integration",
     version="0.2.0"
 )
 
-# --- Configuración de Plantillas / Templates ---
+# Configuración de Plantillas HTML
 templates = Jinja2Templates(directory="templates")
 
-
-# --- CORS Middleware / Configuración de CORS ---
+# Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite peticiones desde cualquier origen (Lovable, localhost, etc.)
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Permite GET, POST, PATCH, OPTIONS, etc.
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Ruta Raíz / Frontend UI ---
-@app.get("/", response_class=HTMLResponse)
-def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-# --- Pydantic Schemas / Esquemas Pydantic ---
+# --- Schemas Pydantic ---
 
 class TicketCreate(BaseModel):
     query: str
@@ -51,27 +44,26 @@ class AdminReview(BaseModel):
     approved: bool = True
 
 class TechnicalAction(BaseModel):
-    action_type: str  # Options: "RESOLVE" or "REQUEST_PARTS"
+    action_type: str  # "RESOLVE" o "REQUEST_PARTS"
     resolution_notes: Optional[str] = None
-    material_id: Optional[str] = None  # Needed if REQUEST_PARTS
+    material_id: Optional[str] = None
 
 class TicketResponse(BaseModel):
     id: int
-    user_id: Optional[str]
+    user_id: Optional[str] = None
     query: str
-    category: Optional[str]
-    urgency: Optional[str]
-    department: Optional[str]
-    summary: Optional[str]
+    category: Optional[str] = None
+    urgency: Optional[str] = None
+    department: Optional[str] = None
+    summary: Optional[str] = None
     status: str
-    sap_solped_id: Optional[str]
-    sap_material_id: Optional[str]
-    sap_status: Optional[str]
+    sap_solped_id: Optional[str] = None
+    sap_material_id: Optional[str] = None
+    sap_status: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# --- Classification Helper / Lógica de Clasificación Inicial ---
+# --- Helper de Clasificación por Reglas ---
 
 def classify_query(query: str):
     query_lower = query.lower()
@@ -97,13 +89,12 @@ def classify_query(query: str):
             "summary": f"Standard inquiry: {query[:40]}..."
         }
 
-# --- API Endpoints ---
+# --- Endpoints API & Frontend ---
 
-@app.get("/")
-def read_root():
-    return {"status": "ok", "message": "Stella Triage Engine v0.2.0 is running with SQL & SAP MM support"}
+@app.get("/", response_class=HTMLResponse)
+def read_root(request: Request):
+    return templates.TemplateResponse(request=request, name="index.html")
 
-# 1. USER: Create Ticket / Crear Incidencia
 @app.post("/tickets", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
 def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     triage_info = classify_query(payload.query)
@@ -122,7 +113,6 @@ def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     db.refresh(new_ticket)
     return new_ticket
 
-# 2. GLOBAL/ADMIN: List Tickets / Listar Incidencias
 @app.get("/tickets", response_model=List[TicketResponse])
 def get_tickets(status_filter: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(TicketModel)
@@ -130,7 +120,6 @@ def get_tickets(status_filter: Optional[str] = None, db: Session = Depends(get_d
         query = query.filter(TicketModel.status == status_filter)
     return query.all()
 
-# 3. ADMIN: Human Review / Verificación Humana del Admin
 @app.patch("/tickets/{ticket_id}/review", response_model=TicketResponse)
 def admin_review_ticket(ticket_id: int, review: AdminReview, db: Session = Depends(get_db)):
     ticket = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
@@ -138,38 +127,38 @@ def admin_review_ticket(ticket_id: int, review: AdminReview, db: Session = Depen
         raise HTTPException(status_code=404, detail="Ticket not found")
     
     if review.category:
-        ticket.category = review.category
+        setattr(ticket, "category", review.category)
     if review.urgency:
-        ticket.urgency = review.urgency
+        setattr(ticket, "urgency", review.urgency)
     if review.department:
-        ticket.department = review.department
+        setattr(ticket, "department", review.department)
         
-    ticket.status = "ASSIGNED_TO_TECHNICAL" if review.approved else "REJECTED_BY_ADMIN"
+    setattr(ticket, "status", "ASSIGNED_TO_TECHNICAL" if review.approved else "REJECTED_BY_ADMIN")
     db.commit()
     db.refresh(ticket)
     return ticket
 
-# 4. TECH / SAP MM: Technical Action / Acción Técnica y Pedido SAP
 @app.post("/tickets/{ticket_id}/action", response_model=TicketResponse)
 def technical_action(ticket_id: int, action: TechnicalAction, db: Session = Depends(get_db)):
     ticket = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     
+    current_summary = str(ticket.summary or "")
+    
     if action.action_type == "RESOLVE":
-        ticket.status = "RESOLVED"
-        ticket.summary += f" | Resolution: {action.resolution_notes or 'Resolved directly by technician.'}"
+        setattr(ticket, "status", "RESOLVED")
+        setattr(ticket, "summary", current_summary + f" | Resolution: {action.resolution_notes or 'Resolved directly.'}")
     
     elif action.action_type == "REQUEST_PARTS":
-        # Simulate SAP MM Purchase Requisition (SolPed) creation
         solped_number = f"1000{random.randint(4000, 9999)}"
         mat_id = action.material_id or "MAT-STD-REPLACEMENT"
         
-        ticket.status = "AWAITING_SAP_STOCK"
-        ticket.sap_solped_id = solped_number
-        ticket.sap_material_id = mat_id
-        ticket.sap_status = "PURCHASE_REQUISITION_CREATED"
-        ticket.summary += f" | SAP SolPed generated: #{solped_number} for Material {mat_id}"
+        setattr(ticket, "status", "AWAITING_SAP_STOCK")
+        setattr(ticket, "sap_solped_id", solped_number)
+        setattr(ticket, "sap_material_id", mat_id)
+        setattr(ticket, "sap_status", "PURCHASE_REQUISITION_CREATED")
+        setattr(ticket, "summary", current_summary + f" | SAP SolPed generated: #{solped_number} for Material {mat_id}")
     else:
         raise HTTPException(status_code=400, detail="Invalid action_type. Choose RESOLVE or REQUEST_PARTS.")
     
@@ -177,19 +166,19 @@ def technical_action(ticket_id: int, action: TechnicalAction, db: Session = Depe
     db.refresh(ticket)
     return ticket
 
-# 5. SAP MM MOCK: Goods Receipt (MIGO 101) / Simulación de Recepción de Mercancía
 @app.post("/tickets/{ticket_id}/sap-goods-receipt", response_model=TicketResponse)
 def sap_goods_receipt(ticket_id: int, db: Session = Depends(get_db)):
     ticket = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     
-    if ticket.status != "AWAITING_SAP_STOCK":
+    if getattr(ticket, "status") != "AWAITING_SAP_STOCK":
         raise HTTPException(status_code=400, detail="Ticket is not awaiting SAP stock")
     
-    ticket.sap_status = "GOODS_RECEIVED_MIGO_101"
-    ticket.status = "RESOLVED"
-    ticket.summary += " | Stock received via SAP MIGO (Mov. 101). Ticket closed."
+    current_summary = str(ticket.summary or "")
+    setattr(ticket, "sap_status", "GOODS_RECEIVED_MIGO_101")
+    setattr(ticket, "status", "RESOLVED")
+    setattr(ticket, "summary", current_summary + " | Stock received via SAP MIGO (Mov. 101). Ticket closed.")
     
     db.commit()
     db.refresh(ticket)
