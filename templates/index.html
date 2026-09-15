@@ -69,9 +69,9 @@
             <div class="flex justify-between items-center">
                 <h2 class="text-xl font-bold flex items-center space-x-2">
                     <i data-lucide="shield" class="text-amber-400"></i>
-                    <span>Verificación Humana (Human-in-the-Loop)</span>
+                    <span>Pendientes de Verificación Humana (Human-in-the-Loop)</span>
                 </h2>
-                <button onclick="loadTickets()" class="text-slate-400 hover:text-white flex items-center space-x-1 text-sm">
+                <button onclick="loadTickets()" class="text-slate-400 hover:text-white flex items-center space-x-1 text-sm bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     <span>Actualizar</span>
                 </button>
@@ -84,13 +84,15 @@
             <div class="flex justify-between items-center">
                 <h2 class="text-xl font-bold flex items-center space-x-2">
                     <i data-lucide="boxes" class="text-emerald-400"></i>
-                    <span>Resolución Técnica e Integración SAP MM</span>
+                    <span>Panel de Trabajo Técnico e Integración SAP MM</span>
                 </h2>
-                <button onclick="loadTickets()" class="text-slate-400 hover:text-white flex items-center space-x-1 text-sm">
+                <button onclick="loadTickets()" class="text-slate-400 hover:text-white flex items-center space-x-1 text-sm bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     <span>Actualizar</span>
                 </button>
             </div>
+
+            <!-- Tablero de Trabajo del Técnico -->
             <div id="tech-tickets-container" class="grid gap-4"></div>
         </section>
 
@@ -138,7 +140,12 @@
             const pending = tickets.filter(t => t.status === 'PENDING_ADMIN_REVIEW');
             
             if (pending.length === 0) {
-                container.innerHTML = `<p class="text-slate-500 text-sm">No hay incidencias pendientes de revisión.</p>`;
+                container.innerHTML = `
+                    <div class="bg-slate-800/20 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
+                        <i data-lucide="check-circle-2" class="w-8 h-8 text-emerald-500 mx-auto mb-2"></i>
+                        <p class="font-medium">No hay incidencias pendientes de revisión admin.</p>
+                    </div>`;
+                lucide.createIcons();
                 return;
             }
 
@@ -146,18 +153,23 @@
                 <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-3">
                     <div class="flex justify-between items-start">
                         <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id}</span>
-                        <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-md">${t.status}</span>
+                        <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-md font-medium">PENDIENTE ADMIN</span>
                     </div>
-                    <p class="text-slate-200 font-medium">${t.query}</p>
-                    <div class="text-xs text-slate-400 bg-slate-900/50 p-3 rounded-lg border border-slate-800 space-y-1">
-                        <div><strong>Categoría sugerida por IA:</strong> ${t.category}</div>
-                        <div><strong>Urgencia:</strong> ${t.urgency}</div>
+                    <p class="text-slate-200 font-medium text-lg">${t.query}</p>
+                    <div class="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800/80 grid grid-cols-3 gap-2">
+                        <div><strong class="text-slate-400">Categoría IA:</strong><br>${t.category || 'N/A'}</div>
+                        <div><strong class="text-slate-400">Urgencia:</strong><br><span class="text-amber-400">${t.urgency || 'N/A'}</span></div>
+                        <div><strong class="text-slate-400">Departamento:</strong><br>${t.department || 'N/A'}</div>
                     </div>
-                    <button onclick="reviewTicket(${t.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
-                        Aprobar y Asignar a Técnico
-                    </button>
+                    <div class="pt-2">
+                        <button onclick="reviewTicket(${t.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex items-center space-x-2">
+                            <i data-lucide="user-check" class="w-4 h-4"></i>
+                            <span>Aprobar y Asignar a Técnico</span>
+                        </button>
+                    </div>
                 </div>
             `).join('');
+            lucide.createIcons();
         }
 
         async function reviewTicket(id) {
@@ -171,42 +183,95 @@
 
         function renderTechTickets(tickets) {
             const container = document.getElementById('tech-tickets-container');
-            const techTickets = tickets.filter(t => ['ASSIGNED_TO_TECHNICAL', 'AWAITING_SAP_STOCK', 'RESOLVED'].includes(t.status));
+            
+            if (tickets.length === 0) {
+                container.innerHTML = `<p class="text-slate-500 text-sm">No hay registros de tickets en el sistema.</p>`;
+                return;
+            }
 
-            container.innerHTML = techTickets.map(t => `
-                <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-3">
-                    <div class="flex justify-between items-start">
-                        <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id}</span>
-                        <span class="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded-md">${t.status}</span>
-                    </div>
-                    <p class="text-slate-200 font-medium">${t.query}</p>
-                    
-                    ${t.sap_solped_id ? `
-                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-lg text-xs space-y-1">
-                            <div class="text-emerald-400 font-semibold flex items-center space-x-1">
-                                <i data-lucide="package" class="w-3.5 h-3.5"></i>
-                                <span>SAP MM SolPed: #${t.sap_solped_id}</span>
-                            </div>
-                            <div class="text-slate-400">Material: ${t.sap_material_id}</div>
-                            <div class="text-slate-400">Estado SAP: ${t.sap_status}</div>
+            container.innerHTML = tickets.map(t => {
+                let statusBadge = '';
+                let actionButtons = '';
+                let sapCard = '';
+
+                if (t.status === 'ASSIGNED_TO_TECHNICAL') {
+                    statusBadge = `<span class="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded-md font-medium">LISTO PARA REPARAR</span>`;
+                    actionButtons = `
+                        <div class="flex space-x-2 pt-2">
+                            <button onclick="resolveTicketDirect(${t.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition flex items-center space-x-1">
+                                <i data-lucide="check" class="w-4 h-4"></i>
+                                <span>Reparar Directamente</span>
+                            </button>
+                            <button onclick="requestSapParts(${t.id})" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition flex items-center space-x-1">
+                                <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+                                <span>Solicitar Recambio SAP MM (SolPed)</span>
+                            </button>
                         </div>
-                    ` : ''}
+                    `;
+                } else if (t.status === 'AWAITING_SAP_STOCK') {
+                    statusBadge = `<span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-md font-medium">ESPERANDO PIEZA EN ALMACÉN</span>`;
+                    sapCard = `
+                        <div class="bg-slate-900 border border-slate-800 p-3.5 rounded-xl text-xs space-y-1.5">
+                            <div class="text-amber-400 font-semibold flex items-center space-x-1">
+                                <i data-lucide="package" class="w-4 h-4"></i>
+                                <span>Solicitud de Pedido (SolPed SAP): #${t.sap_solped_id}</span>
+                            </div>
+                            <div class="text-slate-300">Material Requerido: <span class="font-mono text-indigo-300">${t.sap_material_id}</span></div>
+                            <div class="text-slate-400">Estado SAP MM: ${t.sap_status}</div>
+                        </div>
+                    `;
+                    actionButtons = `
+                        <div class="pt-2">
+                            <button onclick="receiveGoods(${t.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition flex items-center space-x-1">
+                                <i data-lucide="box" class="w-4 h-4"></i>
+                                <span>Registrar Recepción de Pieza MIGO 101 & Cerrar</span>
+                            </button>
+                        </div>
+                    `;
+                } else if (t.status === 'RESOLVED') {
+                    statusBadge = `<span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-md font-medium">RESUELTO / CERRADO</span>`;
+                    if (t.sap_solped_id) {
+                        sapCard = `
+                            <div class="bg-slate-900/60 border border-slate-800 p-3.5 rounded-xl text-xs space-y-1">
+                                <div class="text-emerald-400 font-semibold flex items-center space-x-1">
+                                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                    <span>Movimiento SAP MIGO 101 Completado (SolPed #${t.sap_solped_id})</span>
+                                </div>
+                                <div class="text-slate-400">Material: ${t.sap_material_id}</div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    statusBadge = `<span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md">${t.status}</span>`;
+                }
 
-                    <div class="flex space-x-2 pt-2">
-                        ${t.status === 'ASSIGNED_TO_TECHNICAL' ? `
-                            <button onclick="requestSapParts(${t.id})" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition">
-                                Pedir Recambio a SAP MM (SolPed)
-                            </button>
-                        ` : ''}
-                        ${t.status === 'AWAITING_SAP_STOCK' ? `
-                            <button onclick="receiveGoods(${t.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition">
-                                Registrar MIGO (Mov 101) & Cerrar
-                            </button>
-                        ` : ''}
+                return `
+                    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-3">
+                        <div class="flex justify-between items-start">
+                            <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id}</span>
+                            ${statusBadge}
+                        </div>
+                        <p class="text-slate-200 font-medium">${t.query}</p>
+                        
+                        <div class="text-xs text-slate-400 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800">
+                            <strong>Resumen / Trazabilidad:</strong> ${t.summary || 'Sin detalles'}
+                        </div>
+
+                        ${sapCard}
+                        ${actionButtons}
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
             lucide.createIcons();
+        }
+
+        async function resolveTicketDirect(id) {
+            await fetch(`${API_URL}/tickets/${id}/action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action_type: 'RESOLVE', resolution_notes: 'Reparación realizada directamente por técnico.' })
+            });
+            loadTickets();
         }
 
         async function requestSapParts(id) {
