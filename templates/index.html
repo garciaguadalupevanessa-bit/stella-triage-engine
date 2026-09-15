@@ -24,7 +24,7 @@
                 </div>
             </div>
             
-            <!-- Role Tabs -->
+            <!-- Main Role Tabs -->
             <nav class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
                 <button onclick="switchTab('user')" id="tab-user" class="px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-indigo-600 text-white">
                     <i data-lucide="user" class="w-4 h-4"></i>
@@ -54,7 +54,7 @@
                 <form id="create-ticket-form" onsubmit="handleCreateTicket(event)" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-300 mb-1">Descripción del problema</label>
-                        <textarea id="query-input" required rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="Ej: El compresor de aire acondicionado hace un ruido extraño y no enfria..."></textarea>
+                        <textarea id="query-input" required rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="Ej: El compresor de aire acondicionado hace un ruido extraño y no enfría..."></textarea>
                     </div>
                     <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-2.5 rounded-xl transition flex items-center space-x-2">
                         <i data-lucide="send" class="w-4 h-4"></i>
@@ -66,33 +66,60 @@
 
         <!-- ADMIN VIEW -->
         <section id="view-admin" class="hidden space-y-6">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold flex items-center space-x-2">
-                    <i data-lucide="shield" class="text-amber-400"></i>
-                    <span>Pendientes de Verificación Humana (Human-in-the-Loop)</span>
-                </h2>
-                <button onclick="loadTickets()" class="text-slate-400 hover:text-white flex items-center space-x-1 text-sm bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
-                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                    <span>Actualizar</span>
-                </button>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold flex items-center space-x-2">
+                        <i data-lucide="shield" class="text-amber-400"></i>
+                        <span>Gobernanza y Validación Humana</span>
+                    </h2>
+                    <p class="text-xs text-slate-400">Supervisión de categorización IA y derivación a equipos</p>
+                </div>
+                
+                <!-- Admin Sub-Filters -->
+                <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium">
+                    <button onclick="setAdminFilter('PENDING_ADMIN_REVIEW')" id="admin-filter-PENDING_ADMIN_REVIEW" class="px-3 py-1.5 rounded-md transition bg-amber-600 text-white">
+                        Pendientes de Verificación
+                    </button>
+                    <button onclick="setAdminFilter('ASSIGNED_TO_TECHNICAL')" id="admin-filter-ASSIGNED_TO_TECHNICAL" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
+                        Asignadas a Técnico
+                    </button>
+                    <button onclick="setAdminFilter('ALL')" id="admin-filter-ALL" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
+                        Todas
+                    </button>
+                </div>
             </div>
+
             <div id="admin-tickets-container" class="grid gap-4"></div>
         </section>
 
         <!-- TECH / SAP MM VIEW -->
         <section id="view-tech" class="hidden space-y-6">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold flex items-center space-x-2">
-                    <i data-lucide="boxes" class="text-emerald-400"></i>
-                    <span>Panel de Trabajo Técnico e Integración SAP MM</span>
-                </h2>
-                <button onclick="loadTickets()" class="text-slate-400 hover:text-white flex items-center space-x-1 text-sm bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
-                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                    <span>Actualizar</span>
-                </button>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold flex items-center space-x-2">
+                        <i data-lucide="boxes" class="text-emerald-400"></i>
+                        <span>Panel Operativo Técnico e Integración SAP MM</span>
+                    </h2>
+                    <p class="text-xs text-slate-400">Gestión de órdenes de trabajo, SolPeds y recepción MIGO 101</p>
+                </div>
+
+                <!-- Tech Sub-Filters -->
+                <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium flex-wrap gap-1">
+                    <button onclick="setTechFilter('ASSIGNED_TO_TECHNICAL')" id="tech-filter-ASSIGNED_TO_TECHNICAL" class="px-3 py-1.5 rounded-md transition bg-indigo-600 text-white">
+                        Pte. Reparación
+                    </button>
+                    <button onclick="setTechFilter('AWAITING_SAP_STOCK')" id="tech-filter-AWAITING_SAP_STOCK" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
+                        Pte. Material (SAP MM)
+                    </button>
+                    <button onclick="setTechFilter('RESOLVED')" id="tech-filter-RESOLVED" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
+                        Resueltos
+                    </button>
+                    <button onclick="setTechFilter('ALL')" id="tech-filter-ALL" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
+                        Todos
+                    </button>
+                </div>
             </div>
 
-            <!-- Tablero de Trabajo del Técnico -->
             <div id="tech-tickets-container" class="grid gap-4"></div>
         </section>
 
@@ -100,6 +127,9 @@
 
     <script>
         const API_URL = window.location.origin;
+        let globalTickets = [];
+        let currentAdminFilter = 'PENDING_ADMIN_REVIEW';
+        let currentTechFilter = 'ASSIGNED_TO_TECHNICAL';
 
         function switchTab(role) {
             ['user', 'admin', 'tech'].forEach(r => {
@@ -114,12 +144,34 @@
         async function loadTickets() {
             try {
                 const res = await fetch(`${API_URL}/tickets`);
-                const tickets = await res.json();
-                renderAdminTickets(tickets);
-                renderTechTickets(tickets);
+                globalTickets = await res.json();
+                renderAdminTickets();
+                renderTechTickets();
             } catch (err) {
                 console.error("Error cargando tickets:", err);
             }
+        }
+
+        function setAdminFilter(filter) {
+            currentAdminFilter = filter;
+            ['PENDING_ADMIN_REVIEW', 'ASSIGNED_TO_TECHNICAL', 'ALL'].forEach(f => {
+                const btn = document.getElementById(`admin-filter-${f}`);
+                if (btn) btn.className = f === filter 
+                    ? 'px-3 py-1.5 rounded-md transition bg-amber-600 text-white' 
+                    : 'px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white';
+            });
+            renderAdminTickets();
+        }
+
+        function setTechFilter(filter) {
+            currentTechFilter = filter;
+            ['ASSIGNED_TO_TECHNICAL', 'AWAITING_SAP_STOCK', 'RESOLVED', 'ALL'].forEach(f => {
+                const btn = document.getElementById(`tech-filter-${f}`);
+                if (btn) btn.className = f === filter 
+                    ? 'px-3 py-1.5 rounded-md transition bg-indigo-600 text-white' 
+                    : 'px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white';
+            });
+            renderTechTickets();
         }
 
         async function handleCreateTicket(e) {
@@ -135,38 +187,43 @@
             switchTab('admin');
         }
 
-        function renderAdminTickets(tickets) {
+        function renderAdminTickets() {
             const container = document.getElementById('admin-tickets-container');
-            const pending = tickets.filter(t => t.status === 'PENDING_ADMIN_REVIEW');
-            
-            if (pending.length === 0) {
+            let filtered = globalTickets;
+            if (currentAdminFilter !== 'ALL') {
+                filtered = globalTickets.filter(t => t.status === currentAdminFilter);
+            }
+
+            if (filtered.length === 0) {
                 container.innerHTML = `
                     <div class="bg-slate-800/20 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
-                        <i data-lucide="check-circle-2" class="w-8 h-8 text-emerald-500 mx-auto mb-2"></i>
-                        <p class="font-medium">No hay incidencias pendientes de revisión admin.</p>
+                        <i data-lucide="inbox" class="w-8 h-8 text-slate-500 mx-auto mb-2"></i>
+                        <p class="font-medium">No hay incidencias en esta categoría.</p>
                     </div>`;
                 lucide.createIcons();
                 return;
             }
 
-            container.innerHTML = pending.map(t => `
+            container.innerHTML = filtered.map(t => `
                 <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-3">
                     <div class="flex justify-between items-start">
                         <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id}</span>
-                        <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-md font-medium">PENDIENTE ADMIN</span>
+                        <span class="text-xs ${t.status === 'PENDING_ADMIN_REVIEW' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'} border px-2.5 py-1 rounded-md font-medium">${t.status}</span>
                     </div>
-                    <p class="text-slate-200 font-medium text-lg">${t.query}</p>
-                    <div class="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800/80 grid grid-cols-3 gap-2">
+                    <p class="text-slate-200 font-medium text-base">${t.query}</p>
+                    <div class="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-2">
                         <div><strong class="text-slate-400">Categoría IA:</strong><br>${t.category || 'N/A'}</div>
                         <div><strong class="text-slate-400">Urgencia:</strong><br><span class="text-amber-400">${t.urgency || 'N/A'}</span></div>
                         <div><strong class="text-slate-400">Departamento:</strong><br>${t.department || 'N/A'}</div>
                     </div>
-                    <div class="pt-2">
-                        <button onclick="reviewTicket(${t.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex items-center space-x-2">
-                            <i data-lucide="user-check" class="w-4 h-4"></i>
-                            <span>Aprobar y Asignar a Técnico</span>
-                        </button>
-                    </div>
+                    ${t.status === 'PENDING_ADMIN_REVIEW' ? `
+                        <div class="pt-2">
+                            <button onclick="reviewTicket(${t.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex items-center space-x-2">
+                                <i data-lucide="user-check" class="w-4 h-4"></i>
+                                <span>Aprobar y Asignar a Técnico</span>
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
             `).join('');
             lucide.createIcons();
@@ -181,21 +238,30 @@
             loadTickets();
         }
 
-        function renderTechTickets(tickets) {
+        function renderTechTickets() {
             const container = document.getElementById('tech-tickets-container');
-            
-            if (tickets.length === 0) {
-                container.innerHTML = `<p class="text-slate-500 text-sm">No hay registros de tickets en el sistema.</p>`;
+            let filtered = globalTickets;
+            if (currentTechFilter !== 'ALL') {
+                filtered = globalTickets.filter(t => t.status === currentTechFilter);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-slate-800/20 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
+                        <i data-lucide="check-circle-2" class="w-8 h-8 text-slate-500 mx-auto mb-2"></i>
+                        <p class="font-medium">No hay incidencias registradas en este estado.</p>
+                    </div>`;
+                lucide.createIcons();
                 return;
             }
 
-            container.innerHTML = tickets.map(t => {
+            container.innerHTML = filtered.map(t => {
                 let statusBadge = '';
                 let actionButtons = '';
                 let sapCard = '';
 
                 if (t.status === 'ASSIGNED_TO_TECHNICAL') {
-                    statusBadge = `<span class="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded-md font-medium">LISTO PARA REPARAR</span>`;
+                    statusBadge = `<span class="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded-md font-medium">PTE. REPARACIÓN</span>`;
                     actionButtons = `
                         <div class="flex space-x-2 pt-2">
                             <button onclick="resolveTicketDirect(${t.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition flex items-center space-x-1">
@@ -209,7 +275,7 @@
                         </div>
                     `;
                 } else if (t.status === 'AWAITING_SAP_STOCK') {
-                    statusBadge = `<span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-md font-medium">ESPERANDO PIEZA EN ALMACÉN</span>`;
+                    statusBadge = `<span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-md font-medium">PTE. MATERIAL (SAP MM)</span>`;
                     sapCard = `
                         <div class="bg-slate-900 border border-slate-800 p-3.5 rounded-xl text-xs space-y-1.5">
                             <div class="text-amber-400 font-semibold flex items-center space-x-1">
@@ -295,4 +361,4 @@
         loadTickets();
     </script>
 </body>
-</html>
+</html> 
