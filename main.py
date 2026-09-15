@@ -91,10 +91,12 @@ def classify_query(query: str):
 
 # --- Endpoints API & Frontend ---
 
+# 0. FRONTEND UI: Render Dashboard HTML
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
+# 1. USER: Create Ticket
 @app.post("/tickets", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
 def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     triage_info = classify_query(payload.query)
@@ -113,6 +115,8 @@ def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     db.refresh(new_ticket)
     return new_ticket
 
+
+# 2. GLOBAL/ADMIN: List Tickets
 @app.get("/tickets", response_model=List[TicketResponse])
 def get_tickets(status_filter: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(TicketModel)
@@ -120,6 +124,8 @@ def get_tickets(status_filter: Optional[str] = None, db: Session = Depends(get_d
         query = query.filter(TicketModel.status == status_filter)
     return query.all()
 
+
+# 3. ADMIN: Human Review
 @app.patch("/tickets/{ticket_id}/review", response_model=TicketResponse)
 def admin_review_ticket(ticket_id: int, review: AdminReview, db: Session = Depends(get_db)):
     ticket = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
@@ -138,6 +144,7 @@ def admin_review_ticket(ticket_id: int, review: AdminReview, db: Session = Depen
     db.refresh(ticket)
     return ticket
 
+# 4. TECH / SAP MM: Technical Action
 @app.post("/tickets/{ticket_id}/action", response_model=TicketResponse)
 def technical_action(ticket_id: int, action: TechnicalAction, db: Session = Depends(get_db)):
     ticket = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
@@ -166,6 +173,8 @@ def technical_action(ticket_id: int, action: TechnicalAction, db: Session = Depe
     db.refresh(ticket)
     return ticket
 
+
+# 5. SAP MM MOCK: Goods Receipt (MIGO 101)
 @app.post("/tickets/{ticket_id}/sap-goods-receipt", response_model=TicketResponse)
 def sap_goods_receipt(ticket_id: int, db: Session = Depends(get_db)):
     ticket = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
