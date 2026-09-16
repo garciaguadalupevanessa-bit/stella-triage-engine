@@ -54,7 +54,7 @@
                 <form id="create-ticket-form" onsubmit="handleCreateTicket(event)" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-300 mb-1">Descripción del problema</label>
-                        <textarea id="query-input" required rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="Ej: El compresor de aire acondicionado hace un ruido extraño y no enfría..."></textarea>
+                        <textarea id="query-input" required rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="Ej: La tapicería se ha manchado de pintura durante el transporte..."></textarea>
                     </div>
                     <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-2.5 rounded-xl transition flex items-center space-x-2">
                         <i data-lucide="send" class="w-4 h-4"></i>
@@ -70,21 +70,24 @@
                 <div>
                     <h2 class="text-xl font-bold flex items-center space-x-2">
                         <i data-lucide="shield" class="text-amber-400"></i>
-                        <span>Gobernanza y Validación Humana</span>
+                        <span>Gobernanza, Auditoría y Service Desk</span>
                     </h2>
-                    <p class="text-xs text-slate-400">Supervisión de categorización IA y derivación a equipos</p>
+                    <p class="text-xs text-slate-400">Supervisión de categorización IA, aprobación/rechazo y trazabilidad de atención al cliente</p>
                 </div>
                 
                 <!-- Admin Sub-Filters -->
                 <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium">
                     <button onclick="setAdminFilter('PENDING_ADMIN_REVIEW')" id="admin-filter-PENDING_ADMIN_REVIEW" class="px-3 py-1.5 rounded-md transition bg-amber-600 text-white">
-                        Pendientes de Verificación
+                        Ptes. Validación Humana
                     </button>
                     <button onclick="setAdminFilter('ASSIGNED_TO_TECHNICAL')" id="admin-filter-ASSIGNED_TO_TECHNICAL" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
-                        Asignadas a Técnico
+                        Derivadas a Técnico
+                    </button>
+                    <button onclick="setAdminFilter('REJECTED_BY_ADMIN')" id="admin-filter-REJECTED_BY_ADMIN" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
+                        Rechazadas / No Procede
                     </button>
                     <button onclick="setAdminFilter('ALL')" id="admin-filter-ALL" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
-                        Todas
+                        Histórico Global
                     </button>
                 </div>
             </div>
@@ -154,7 +157,7 @@
 
         function setAdminFilter(filter) {
             currentAdminFilter = filter;
-            ['PENDING_ADMIN_REVIEW', 'ASSIGNED_TO_TECHNICAL', 'ALL'].forEach(f => {
+            ['PENDING_ADMIN_REVIEW', 'ASSIGNED_TO_TECHNICAL', 'REJECTED_BY_ADMIN', 'ALL'].forEach(f => {
                 const btn = document.getElementById(`admin-filter-${f}`);
                 if (btn) btn.className = f === filter 
                     ? 'px-3 py-1.5 rounded-md transition bg-amber-600 text-white' 
@@ -183,7 +186,7 @@
                 body: JSON.stringify({ query, user_id: 'usr_vanessa' })
             });
             document.getElementById('query-input').value = '';
-            alert('Incidencia creada correctamente');
+            alert('Incidencia creada y clasificada por Gemini IA');
             switchTab('admin');
         }
 
@@ -198,17 +201,25 @@
                 container.innerHTML = `
                     <div class="bg-slate-800/20 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
                         <i data-lucide="inbox" class="w-8 h-8 text-slate-500 mx-auto mb-2"></i>
-                        <p class="font-medium">No hay incidencias en esta categoría.</p>
+                        <p class="font-medium">No hay incidencias registradas en esta vista de auditoría.</p>
                     </div>`;
                 lucide.createIcons();
                 return;
             }
 
-            container.innerHTML = filtered.map(t => `
+            container.innerHTML = filtered.map(t => {
+                let badgeStyle = 'bg-slate-700 text-slate-300';
+                if (t.status === 'PENDING_ADMIN_REVIEW') badgeStyle = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                if (t.status === 'ASSIGNED_TO_TECHNICAL') badgeStyle = 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+                if (t.status === 'AWAITING_SAP_STOCK') badgeStyle = 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+                if (t.status === 'RESOLVED') badgeStyle = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                if (t.status === 'REJECTED_BY_ADMIN') badgeStyle = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+
+                return `
                 <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-3">
                     <div class="flex justify-between items-start">
                         <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id}</span>
-                        <span class="text-xs ${t.status === 'PENDING_ADMIN_REVIEW' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'} border px-2.5 py-1 rounded-md font-medium">${t.status}</span>
+                        <span class="text-xs border px-2.5 py-1 rounded-md font-medium ${badgeStyle}">${t.status}</span>
                     </div>
                     <p class="text-slate-200 font-medium text-base">${t.query}</p>
                     <div class="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -216,24 +227,45 @@
                         <div><strong class="text-slate-400">Urgencia:</strong><br><span class="text-amber-400">${t.urgency || 'N/A'}</span></div>
                         <div><strong class="text-slate-400">Departamento:</strong><br>${t.department || 'N/A'}</div>
                     </div>
+                    
+                    <div class="text-xs text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
+                        <strong>Histórico / Detalle:</strong> ${t.summary || 'Sin notas adicionles.'}
+                    </div>
+
                     ${t.status === 'PENDING_ADMIN_REVIEW' ? `
-                        <div class="pt-2">
-                            <button onclick="reviewTicket(${t.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex items-center space-x-2">
+                        <div class="pt-2 flex items-center space-x-3">
+                            <button onclick="approveTicket(${t.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition flex items-center space-x-1.5">
                                 <i data-lucide="user-check" class="w-4 h-4"></i>
-                                <span>Aprobar y Asignar a Técnico</span>
+                                <span>Aprobar y Derivar a Técnico</span>
+                            </button>
+                            <button onclick="rejectTicketPrompt(${t.id})" class="bg-rose-600/80 hover:bg-rose-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition flex items-center space-x-1.5">
+                                <i data-lucide="x-circle" class="w-4 h-4"></i>
+                                <span>Rechazar / No Procede</span>
                             </button>
                         </div>
                     ` : ''}
                 </div>
-            `).join('');
+            `}).join('');
             lucide.createIcons();
         }
 
-        async function reviewTicket(id) {
+        async function approveTicket(id) {
             await fetch(`${API_URL}/tickets/${id}/review`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ approved: true })
+            });
+            loadTickets();
+        }
+
+        async function rejectTicketPrompt(id) {
+            const reason = prompt("Indique el motivo de rechazo (Ej: No procede por desgaste; mancha producida por usuario):");
+            if (reason === null) return; // Cancelado por usuario
+            
+            await fetch(`${API_URL}/tickets/${id}/review`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ approved: false, rejection_reason: reason })
             });
             loadTickets();
         }
@@ -361,4 +393,4 @@
         loadTickets();
     </script>
 </body>
-</html> 
+</html>

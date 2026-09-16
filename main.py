@@ -50,6 +50,7 @@ class AdminReview(BaseModel):
     urgency: Optional[str] = None
     department: Optional[str] = None
     approved: bool = True
+    rejection_reason: Optional[str] = None  # Motivo si se rechaza
 
 class TechnicalAction(BaseModel):
     action_type: str  # Opción: "RESOLVE" o "REQUEST_PARTS"
@@ -168,7 +169,15 @@ def admin_review_ticket(ticket_id: int, review: AdminReview, db: Session = Depen
     if review.department:
         setattr(ticket, "department", review.department)
         
-    setattr(ticket, "status", "ASSIGNED_TO_TECHNICAL" if review.approved else "REJECTED_BY_ADMIN")
+    current_summary = str(getattr(ticket, "summary") or "")
+        
+    if review.approved:
+        setattr(ticket, "status", "ASSIGNED_TO_TECHNICAL")
+    else:
+        setattr(ticket, "status", "REJECTED_BY_ADMIN")
+        reason = review.rejection_reason or "No procede según políticas de servicio."
+        setattr(ticket, "summary", current_summary + f" | RECHAZADO: {reason}")
+
     db.commit()
     db.refresh(ticket)
     return ticket
