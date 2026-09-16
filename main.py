@@ -6,16 +6,19 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 import random
+import os
+import json
+import google.generativeai as genai
 
 from database import engine, get_db, Base
 from models import TicketModel
 
-# Inicializar tablas de BD
+# Inicializar tablas de la Base de Datos
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Stella Triage Engine",
-    description="AI-powered triage, lifecycle management, and SAP MM integration",
+    description="AI-powered triage using Gemini, lifecycle management, and SAP MM integration",
     version="0.2.0"
 )
 
@@ -31,6 +34,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Configurar cliente de Google Gemini
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
+if GEMINI_KEY:
+    genai.configure(api_key=GEMINI_KEY)
+
 # --- Schemas Pydantic ---
 
 class TicketCreate(BaseModel):
@@ -44,7 +52,7 @@ class AdminReview(BaseModel):
     approved: bool = True
 
 class TechnicalAction(BaseModel):
-    action_type: str  # "RESOLVE" o "REQUEST_PARTS"
+    action_type: str  # Opción: "RESOLVE" o "REQUEST_PARTS"
     resolution_notes: Optional[str] = None
     material_id: Optional[str] = None
 
@@ -63,40 +71,63 @@ class TicketResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-# --- Helper de Clasificación por Reglas ---
+# --- Clasificador Inteligente con LLM (Google Gemini) ---
 
-def classify_query(query: str):
+def classify_query(query: str) -> dict:
+    prompt = f"""
+    Eres el motor de triaje inteligente de Stella Triage Engine.
+    Analiza la incidencia enviada por el usuario y clasifícala devolviendo ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
+    {{
+      "category": "Categoría técnica del problema (Ej: Peligro Mecánico, Incidencia Software, Climatización, Almacén, etc.)",
+      "urgency": "HIGH / ALTA, MEDIUM / MEDIA o LOW / BAJA",
+      "department": "Departamento asignado para resolución (Ej: Asistencia en Carretera, Soporte IT, Mantenimiento, Almacén)",
+      "summary": "Resumen técnico sintético del problema en máximo 20 palabras"
+    }}
+
+    Incidencia enviada por el usuario: "{query}"
+    """
+
+    if GEMINI_KEY:
+        try:
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            response = model.generate_content(
+                prompt,
+                generation_config={"response_mime_type": "application/json"}
+            )
+            data = json.loads(response.text)
+            return {
+                "category": data.get("category", "General Inquiry / Consulta General"),
+                "urgency": data.get("urgency", "MEDIUM / MEDIA"),
+                "department": data.get("department", "Support / Soporte Técnico"),
+                "summary": data.get("summary", f"Gemini Triage: {query[:40]}...")
+            }
+        except Exception as e:
+            print(f"Error llamando a la API de Gemini: {e}")
+
+    # Fallback heurístico de seguridad si la API no estuviera configurada
     query_lower = query.lower()
-    if any(word in query_lower for word in ["batería", "freno", "motor", "fuego", "danger", "brake", "battery"]):
+    if any(word in query_lower for word in ["batería", "freno", "motor", "fuego", "peligro", "brake", "battery"]):
         return {
             "category": "Mechanical Hazard / Peligro Mecánico",
             "urgency": "HIGH / ALTA",
             "department": "Roadside Assistance / Asistencia en Carretera",
-            "summary": f"Critical issue: {query[:40]}..."
+            "summary": f"Fallback Triage (Crítico): {query[:40]}..."
         }
-    elif any(word in query_lower for word in ["app", "pantalla", "error", "login", "password"]):
-        return {
-            "category": "Software Issue / Incidencia Software",
-            "urgency": "MEDIUM / MEDIA",
-            "department": "IT Support / Soporte Técnico",
-            "summary": f"Software error: {query[:40]}..."
-        }
-    else:
-        return {
-            "category": "General Inquiry / Consulta General",
-            "urgency": "LOW / BAJA",
-            "department": "Customer Care / Atención al Cliente",
-            "summary": f"Standard inquiry: {query[:40]}..."
-        }
+    return {
+        "category": "General Inquiry / Consulta General",
+        "urgency": "MEDIUM / MEDIA",
+        "department": "IT Support / Soporte Técnico",
+        "summary": f"Fallback Triage: {query[:40]}..."
+    }
 
 # --- Endpoints API & Frontend ---
 
-# 0. FRONTEND UI: Render Dashboard HTML
+# 0. FRONTEND UI: Servir Dashboard
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
-# 1. USER: Create Ticket
+# 1. USER: Crear Ticket con Triaje IA
 @app.post("/tickets", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
 def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     triage_info = classify_query(payload.query)
@@ -115,15 +146,13 @@ def create_ticket(payload: TicketCreate, db: Session = Depends(get_db)):
     db.refresh(new_ticket)
     return new_ticket
 
-
-# 2. GLOBAL/ADMIN: List Tickets
+# 2. GLOBAL: Listar Tickets
 @app.get("/tickets", response_model=List[TicketResponse])
 def get_tickets(status_filter: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(TicketModel)
     if status_filter:
         query = query.filter(TicketModel.status == status_filter)
     return query.all()
-
 
 # 3. ADMIN: Human Review
 @app.patch("/tickets/{ticket_id}/review", response_model=TicketResponse)
@@ -144,18 +173,18 @@ def admin_review_ticket(ticket_id: int, review: AdminReview, db: Session = Depen
     db.refresh(ticket)
     return ticket
 
-# 4. TECH / SAP MM: Technical Action
+# 4. TECH / SAP MM: Acción Técnica
 @app.post("/tickets/{ticket_id}/action", response_model=TicketResponse)
 def technical_action(ticket_id: int, action: TechnicalAction, db: Session = Depends(get_db)):
     ticket = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     
-    current_summary = str(ticket.summary or "")
+    current_summary = str(getattr(ticket, "summary") or "")
     
     if action.action_type == "RESOLVE":
         setattr(ticket, "status", "RESOLVED")
-        setattr(ticket, "summary", current_summary + f" | Resolution: {action.resolution_notes or 'Resolved directly.'}")
+        setattr(ticket, "summary", current_summary + f" | Resolucion: {action.resolution_notes or 'Reparado directamente.'}")
     
     elif action.action_type == "REQUEST_PARTS":
         solped_number = f"1000{random.randint(4000, 9999)}"
@@ -165,16 +194,15 @@ def technical_action(ticket_id: int, action: TechnicalAction, db: Session = Depe
         setattr(ticket, "sap_solped_id", solped_number)
         setattr(ticket, "sap_material_id", mat_id)
         setattr(ticket, "sap_status", "PURCHASE_REQUISITION_CREATED")
-        setattr(ticket, "summary", current_summary + f" | SAP SolPed generated: #{solped_number} for Material {mat_id}")
+        setattr(ticket, "summary", current_summary + f" | SAP SolPed: #{solped_number} para Material {mat_id}")
     else:
-        raise HTTPException(status_code=400, detail="Invalid action_type. Choose RESOLVE or REQUEST_PARTS.")
+        raise HTTPException(status_code=400, detail="Acción no válida.")
     
     db.commit()
     db.refresh(ticket)
     return ticket
 
-
-# 5. SAP MM MOCK: Goods Receipt (MIGO 101)
+# 5. SAP MM: Entrada de Mercancía MIGO 101
 @app.post("/tickets/{ticket_id}/sap-goods-receipt", response_model=TicketResponse)
 def sap_goods_receipt(ticket_id: int, db: Session = Depends(get_db)):
     ticket = db.query(TicketModel).filter(TicketModel.id == ticket_id).first()
@@ -182,12 +210,12 @@ def sap_goods_receipt(ticket_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Ticket not found")
     
     if getattr(ticket, "status") != "AWAITING_SAP_STOCK":
-        raise HTTPException(status_code=400, detail="Ticket is not awaiting SAP stock")
+        raise HTTPException(status_code=400, detail="El ticket no está esperando stock")
     
-    current_summary = str(ticket.summary or "")
+    current_summary = str(getattr(ticket, "summary") or "")
     setattr(ticket, "sap_status", "GOODS_RECEIVED_MIGO_101")
     setattr(ticket, "status", "RESOLVED")
-    setattr(ticket, "summary", current_summary + " | Stock received via SAP MIGO (Mov. 101). Ticket closed.")
+    setattr(ticket, "summary", current_summary + " | Recepcion SAP MIGO (Mov. 101) completada. Ticket cerrado.")
     
     db.commit()
     db.refresh(ticket)

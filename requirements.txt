@@ -6,3 +6,7 @@ pytest
 requests
 sqlalchemy
 jinja2
+groq
+google-generativeai
+psycopg2-binary
+
