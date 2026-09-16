@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stella Triage Engine - Control Panel</title>
+    <title>Stella Triage Engine - Smart Camper Support</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -16,23 +16,23 @@
         <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="bg-indigo-600 p-2 rounded-lg text-white">
-                    <i data-lucide="cpu" class="w-6 h-6"></i>
+                    <i data-lucide="compass" class="w-6 h-6"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg leading-none">Stella Triage Engine</h1>
-                    <span class="text-xs text-slate-400">AI Triage & SAP MM Lifecycle</span>
+                    <h1 class="font-bold text-lg leading-none">Stella Smart Camper</h1>
+                    <span class="text-xs text-indigo-400 font-medium">Asistencia Inteligente en Ruta</span>
                 </div>
             </div>
             
             <!-- Main Role Tabs -->
             <nav class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
                 <button onclick="switchTab('user')" id="tab-user" class="px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-indigo-600 text-white">
-                    <i data-lucide="user" class="w-4 h-4"></i>
-                    <span>Usuario</span>
+                    <i data-lucide="life-buoy" class="w-4 h-4"></i>
+                    <span>Notificar Incidencia</span>
                 </button>
                 <button onclick="switchTab('admin')" id="tab-admin" class="px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white">
                     <i data-lucide="shield-check" class="w-4 h-4"></i>
-                    <span>Admin Review</span>
+                    <span>Gobernanza Flota</span>
                 </button>
                 <button onclick="switchTab('tech')" id="tab-tech" class="px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white">
                     <i data-lucide="wrench" class="w-4 h-4"></i>
@@ -44,21 +44,48 @@
 
     <main class="max-w-7xl mx-auto px-6 py-8">
 
-        <!-- USER VIEW -->
-        <section id="view-user" class="space-y-6">
-            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
-                <h2 class="text-xl font-bold mb-4 flex items-center space-x-2">
-                    <i data-lucide="plus-circle" class="text-indigo-400"></i>
-                    <span>Crear Nueva Incidencia</span>
-                </h2>
+        <!-- USER VIEW: FORMULARIO CLIENTE -->
+        <section id="view-user" class="max-w-3xl mx-auto space-y-6">
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 shadow-xl">
+                <div class="border-b border-slate-700/50 pb-4 mb-6">
+                    <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+                        <i data-lucide="plus-circle" class="text-indigo-400"></i>
+                        <span>Asistencia e Incidencias en Ruta</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Notifica cualquier eventualidad con tu van ecológica. Nuestro motor de IA priorizará tu solicitud inmediatamente.</p>
+                </div>
+
                 <form id="create-ticket-form" onsubmit="handleCreateTicket(event)" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-1">Descripción del problema</label>
-                        <textarea id="query-input" required rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="Ej: La tapicería se ha manchado de pintura durante el transporte..."></textarea>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Email de Contacto *</label>
+                            <input type="email" id="email-input" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="cliente@email.com">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Matrícula / ID Camper *</label>
+                            <input type="text" id="plate-input" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="1234-BBB o STELLA-01">
+                        </div>
                     </div>
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-2.5 rounded-xl transition flex items-center space-x-2">
-                        <i data-lucide="send" class="w-4 h-4"></i>
-                        <span>Enviar Incidencia</span>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Nombre y Apellidos</label>
+                            <input type="text" id="name-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="Ej: Vanessa García">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Ubicación / Coordenadas en Ruta</label>
+                            <input type="text" id="location-input" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="Ej: Camping Cabo de Gata / A-397 Km 12">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Detalle de la Incidencia *</label>
+                        <textarea id="query-input" required rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="Describe qué sucede (Ej: La batería auxiliar no carga al conectar el panel solar secundario y se escucha un pitido leve)..."></textarea>
+                    </div>
+
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3 rounded-xl transition flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/20">
+                        <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        <span>Enviar a Triaje Inteligente</span>
                     </button>
                 </form>
             </div>
@@ -76,15 +103,15 @@
                 </div>
                 
                 <!-- Admin Sub-Filters -->
-                <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium">
+                <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium flex-wrap gap-1">
                     <button onclick="setAdminFilter('PENDING_ADMIN_REVIEW')" id="admin-filter-PENDING_ADMIN_REVIEW" class="px-3 py-1.5 rounded-md transition bg-amber-600 text-white">
-                        Ptes. Validación Humana
+                        Ptes. Validación
                     </button>
                     <button onclick="setAdminFilter('ASSIGNED_TO_TECHNICAL')" id="admin-filter-ASSIGNED_TO_TECHNICAL" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
                         Derivadas a Técnico
                     </button>
                     <button onclick="setAdminFilter('REJECTED_BY_ADMIN')" id="admin-filter-REJECTED_BY_ADMIN" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
-                        Rechazadas / No Procede
+                        No Procede
                     </button>
                     <button onclick="setAdminFilter('ALL')" id="admin-filter-ALL" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
                         Histórico Global
@@ -103,7 +130,7 @@
                         <i data-lucide="boxes" class="text-emerald-400"></i>
                         <span>Panel Operativo Técnico e Integración SAP MM</span>
                     </h2>
-                    <p class="text-xs text-slate-400">Gestión de órdenes de trabajo, SolPeds y recepción MIGO 101</p>
+                    <p class="text-xs text-slate-400">Gestión de órdenes de taller, SolPeds a Almacén Central y movimiento MIGO 101</p>
                 </div>
 
                 <!-- Tech Sub-Filters -->
@@ -112,7 +139,7 @@
                         Pte. Reparación
                     </button>
                     <button onclick="setTechFilter('AWAITING_SAP_STOCK')" id="tech-filter-AWAITING_SAP_STOCK" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
-                        Pte. Material (SAP MM)
+                        Pte. Recambio (SAP MM)
                     </button>
                     <button onclick="setTechFilter('RESOLVED')" id="tech-filter-RESOLVED" class="px-3 py-1.5 rounded-md transition text-slate-400 hover:text-white">
                         Resueltos
@@ -151,7 +178,7 @@
                 renderAdminTickets();
                 renderTechTickets();
             } catch (err) {
-                console.error("Error cargando tickets:", err);
+                console.error("Error cargando incidencias:", err);
             }
         }
 
@@ -179,14 +206,23 @@
 
         async function handleCreateTicket(e) {
             e.preventDefault();
-            const query = document.getElementById('query-input').value;
-            await fetch(`${API_URL}/tickets`, {
+            const payload = {
+                customer_email: document.getElementById('email-input').value,
+                van_license_plate: document.getElementById('plate-input').value,
+                customer_name: document.getElementById('name-input').value || 'Cliente Stella',
+                location: document.getElementById('location-input').value || 'En Ruta',
+                query: document.getElementById('query-input').value
+            };
+
+            const res = await fetch(`${API_URL}/tickets`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query, user_id: 'usr_vanessa' })
+                body: JSON.stringify(payload)
             });
-            document.getElementById('query-input').value = '';
-            alert('Incidencia creada y clasificada por Gemini IA');
+            
+            const ticket = await res.json();
+            document.getElementById('create-ticket-form').reset();
+            alert(`Incidencia #${ticket.id} registrada correctamente.\nEstimación de solución (SLA): ${ticket.estimated_sla}`);
             switchTab('admin');
         }
 
@@ -201,7 +237,7 @@
                 container.innerHTML = `
                     <div class="bg-slate-800/20 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
                         <i data-lucide="inbox" class="w-8 h-8 text-slate-500 mx-auto mb-2"></i>
-                        <p class="font-medium">No hay incidencias registradas en esta vista de auditoría.</p>
+                        <p class="font-medium">No hay incidencias registradas en este filtro de auditoría.</p>
                     </div>`;
                 lucide.createIcons();
                 return;
@@ -217,19 +253,26 @@
 
                 return `
                 <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-3">
-                    <div class="flex justify-between items-start">
-                        <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id}</span>
+                    <div class="flex justify-between items-start flex-wrap gap-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs bg-indigo-500/20 text-indigo-300 font-mono px-2.5 py-1 rounded-md font-bold">ID #${t.id}</span>
+                            <span class="text-xs font-bold text-slate-200 bg-slate-800 px-2 py-1 rounded border border-slate-700">Van: ${t.van_license_plate || 'N/A'}</span>
+                            <span class="text-xs text-slate-400">(${t.customer_email})</span>
+                        </div>
                         <span class="text-xs border px-2.5 py-1 rounded-md font-medium ${badgeStyle}">${t.status}</span>
                     </div>
+
                     <p class="text-slate-200 font-medium text-base">${t.query}</p>
-                    <div class="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-2">
+
+                    <div class="text-xs text-slate-300 bg-slate-900/60 p-3 rounded-lg border border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-2">
                         <div><strong class="text-slate-400">Categoría IA:</strong><br>${t.category || 'N/A'}</div>
-                        <div><strong class="text-slate-400">Urgencia:</strong><br><span class="text-amber-400">${t.urgency || 'N/A'}</span></div>
+                        <div><strong class="text-slate-400">Urgencia:</strong><br><span class="text-amber-400 font-semibold">${t.urgency || 'N/A'}</span></div>
                         <div><strong class="text-slate-400">Departamento:</strong><br>${t.department || 'N/A'}</div>
+                        <div><strong class="text-slate-400">Compromiso SLA:</strong><br><span class="text-emerald-400 font-semibold">${t.estimated_sla || 'N/A'}</span></div>
                     </div>
                     
                     <div class="text-xs text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
-                        <strong>Histórico / Detalle:</strong> ${t.summary || 'Sin notas adicionles.'}
+                        <strong>Histórico / Trazabilidad:</strong> ${t.summary || 'Sin notas adicionales.'}
                     </div>
 
                     ${t.status === 'PENDING_ADMIN_REVIEW' ? `
@@ -259,8 +302,8 @@
         }
 
         async function rejectTicketPrompt(id) {
-            const reason = prompt("Indique el motivo de rechazo (Ej: No procede por desgaste; mancha producida por usuario):");
-            if (reason === null) return; // Cancelado por usuario
+            const reason = prompt("Indique el motivo de rechazo (Ej: No procede garantía; mancha por mal uso del cliente):");
+            if (reason === null) return;
             
             await fetch(`${API_URL}/tickets/${id}/review`, {
                 method: 'PATCH',
@@ -281,7 +324,7 @@
                 container.innerHTML = `
                     <div class="bg-slate-800/20 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
                         <i data-lucide="check-circle-2" class="w-8 h-8 text-slate-500 mx-auto mb-2"></i>
-                        <p class="font-medium">No hay incidencias registradas en este estado.</p>
+                        <p class="font-medium">No hay incidencias registradas en este estado técnico.</p>
                     </div>`;
                 lucide.createIcons();
                 return;
@@ -316,6 +359,7 @@
                             </div>
                             <div class="text-slate-300">Material Requerido: <span class="font-mono text-indigo-300">${t.sap_material_id}</span></div>
                             <div class="text-slate-400">Estado SAP MM: ${t.sap_status}</div>
+                            <div class="text-amber-300">SLA Actualizado: ${t.estimated_sla}</div>
                         </div>
                     `;
                     actionButtons = `
@@ -346,7 +390,7 @@
                 return `
                     <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-3">
                         <div class="flex justify-between items-start">
-                            <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id}</span>
+                            <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id} - Matrícula: ${t.van_license_plate}</span>
                             ${statusBadge}
                         </div>
                         <p class="text-slate-200 font-medium">${t.query}</p>
@@ -367,7 +411,7 @@
             await fetch(`${API_URL}/tickets/${id}/action`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action_type: 'RESOLVE', resolution_notes: 'Reparación realizada directamente por técnico.' })
+                body: JSON.stringify({ action_type: 'RESOLVE', resolution_notes: 'Reparación realizada directamente por técnico en taller/ruta.' })
             });
             loadTickets();
         }
@@ -376,7 +420,7 @@
             await fetch(`${API_URL}/tickets/${id}/action`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action_type: 'REQUEST_PARTS', material_id: 'MAT-COMPRESOR-AC' })
+                body: JSON.stringify({ action_type: 'REQUEST_PARTS', material_id: 'MAT-VAN-ECO-PARTS' })
             });
             loadTickets();
         }

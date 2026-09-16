@@ -1,5 +1,5 @@
-from database import SessionLocal, engine, Base
-from models import TicketModel
+from app.database import SessionLocal, engine, Base
+from app.models import TicketModel
 
 def seed_database():
     Base.metadata.create_all(bind=engine)
