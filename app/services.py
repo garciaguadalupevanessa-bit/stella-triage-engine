@@ -22,7 +22,8 @@ def classify_query(query_text: str) -> dict:
         if not model_cls:
             return get_fallback_triage(query_text)
 
-        model = model_cls("gemini-1.5-flash")
+        # Nombre de modelo estable y compatible con v1beta
+        model = model_cls("gemini-1.5-flash-latest")
         prompt = f"""
         Eres el motor de triaje inteligente para la flota Stella Smart Camper.
         Analiza el siguiente problema reportado por el cliente: "{query_text}"

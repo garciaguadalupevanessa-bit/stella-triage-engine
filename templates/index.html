@@ -161,15 +161,76 @@
         let currentAdminFilter = 'PENDING_ADMIN_REVIEW';
         let currentTechFilter = 'ASSIGNED_TO_TECHNICAL';
 
-        function switchTab(role) {
-            ['user', 'admin', 'tech'].forEach(r => {
-                document.getElementById(`view-${r}`).classList.add('hidden');
-                document.getElementById(`tab-${r}`).className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white';
-            });
-            document.getElementById(`view-${role}`).classList.remove('hidden');
-            document.getElementById(`tab-${role}`).className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-indigo-600 text-white';
-            loadTickets();
+        async function switchTab(role) {
+            if (role === 'admin') {
+                const auth = sessionStorage.getItem('auth_role');
+                if (auth !== 'admin') {
+                    const pass = prompt("Acceso Restringido - Gobernanza Flota\nIntroduce la contraseña:");
+                    if (!pass) return;
+
+                try {
+                    const res = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pass })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.role === 'admin') {
+                        sessionStorage.setItem('auth_role', 'admin');
+                    } else {
+                        alert("Contraseña incorrecta para Gobernanza");
+                        return;
+                    }
+                } catch (err) {
+                    if (pass === "admin123") {
+                        sessionStorage.setItem('auth_role', 'admin');
+                    } else {
+                        alert("Contraseña incorrecta");
+                        return;
+                }
+            }
         }
+    } else if (role === 'tech') {
+        const auth = sessionStorage.getItem('auth_role');
+        if (auth !== 'tech' && auth !== 'admin') {
+            const pass = prompt("Acceso Técnico & SAP MM\nIntroduce la contraseña:");
+            if (!pass) return;
+
+            try {
+                const res = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pass })
+                });
+                const data = await res.json();
+                if (res.ok && (data.role === 'tech' || data.role === 'admin')) {
+                    sessionStorage.setItem('auth_role', data.role);
+                } else {
+                    alert("Contraseña incorrecta para Técnico");
+                    return;
+                }
+            } catch (err) {
+                if (pass === "tech123") {
+                    sessionStorage.setItem('auth_role', 'tech');
+                } else {
+                    alert("Contraseña incorrecta");
+                    return;
+                }
+            }
+        }
+    }
+
+    // Cambiar de vista en la interfaz
+    ['user', 'admin', 'tech'].forEach(r => {
+        document.getElementById(`view-${r}`).classList.add('hidden');
+        document.getElementById(`tab-${r}`).className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white';
+    });
+    
+    document.getElementById(`view-${role}`).classList.remove('hidden');
+    document.getElementById(`tab-${role}`).className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-indigo-600 text-white';
+    
+    loadTickets();
+}
 
         async function loadTickets() {
             try {
