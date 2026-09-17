@@ -8,6 +8,7 @@ from app.models import TicketModel
 from app.schemas import TicketCreate, AdminReview, TechnicalAction, TicketResponse
 from app.services import classify_query, send_status_email
 
+
 router = APIRouter(prefix="/tickets", tags=["Tickets"])
 
 @router.post("", response_model=TicketResponse, status_code=status.HTTP_201_CREATED)
