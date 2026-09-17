@@ -168,36 +168,22 @@
             }
 
             if (role === 'admin') {
-                const auth = sessionStorage.getItem('auth_role');
-                if (auth !== 'admin') {
-                    const pass = prompt("Acceso Restringido - Gobernanza Flota\nIntroduce la contraseña:");
-                    if (pass === "admin123") {
-                        sessionStorage.setItem('auth_role', 'admin');
-                    } else if (pass !== null) {
-                        alert("Contraseña incorrecta para Gobernanza");
-                        return;
-                    } else {
-                        return;
-                    }
+                const pass = prompt("Acceso Restringido - Gobernanza Flota\nIntroduce la contraseña:");
+                if (pass === "admin123") {
+                    activateTab('admin');
+                } else if (pass !== null) {
+                    alert("Contraseña incorrecta para Gobernanza");
                 }
-                activateTab('admin');
                 return;
             }
 
             if (role === 'tech') {
-                const auth = sessionStorage.getItem('auth_role');
-                if (auth !== 'tech' && auth !== 'admin') {
-                    const pass = prompt("Acceso Técnico & SAP MM\nIntroduce la contraseña:");
-                    if (pass === "tech123") {
-                        sessionStorage.setItem('auth_role', 'tech');
-                    } else if (pass !== null) {
-                        alert("Contraseña incorrecta para Técnico");
-                        return;
-                    } else {
-                        return;
-                    }
+                const pass = prompt("Acceso Técnico & SAP MM\nIntroduce la contraseña:");
+                if (pass === "tech123") {
+                    activateTab('tech');
+                } else if (pass !== null) {
+                    alert("Contraseña incorrecta para Técnico");
                 }
-                activateTab('tech');
                 return;
             }
         }
