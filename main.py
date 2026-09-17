@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from app.routers import auth, tickets
 
-# Inicializar tablas en Base de Datos
+# Forzar la recreación limpia de tablas en PostgreSQL con la nueva estructura
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
