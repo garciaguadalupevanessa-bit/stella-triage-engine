@@ -1,7 +1,5 @@
 # 🚐 Stella Triage Engine — Smart Camper Support & Fleet Governance
 
-# 🚐 Stella Triage Engine — Smart Camper Support & Fleet Governance
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/garciaguadalupevanessa-bit/stella-triage-engine/main/static/logo.png" alt="Stella Triage Engine Logo" width="220" />
 </p>
