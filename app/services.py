@@ -1,79 +1,72 @@
 import os
 import json
-import smtplib
 import requests
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import google.generativeai as genai
 
-# Configuración de Gemini API
+# Claves de API desde variables de entorno de Render
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-if GEMINI_API_KEY:
-    configure_fn = getattr(genai, "configure", None)
-    if callable(configure_fn):
-        configure_fn(api_key=GEMINI_API_KEY)
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+
 
 def classify_query(query_text: str) -> dict:
-    """Clasifica la consulta con Gemini API o aplica el fallback de reglas locales."""
+    """Clasificación con llamada REST directa y fallback en cascada de modelos Gemini."""
     if not GEMINI_API_KEY:
         return get_fallback_triage(query_text)
 
-    try:
-        model_cls = getattr(genai, "GenerativeModel", None)
-        if not model_cls:
-            return get_fallback_triage(query_text)
+    # Reintento en cascada sobre modelos oficialmente soportados
+    candidate_models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+    
+    prompt = f"""
+    Eres el motor de triaje inteligente para la flota Stella Smart Camper.
+    Analiza el siguiente problema reportado por el cliente: "{query_text}"
 
-        # Usar el identificador nativo aceptado por la v1beta
-        model = model_cls("gemini-1.5-flash")
-        prompt = f"""
-        Eres el motor de triaje inteligente para la flota Stella Smart Camper.
-        Analiza el siguiente problema reportado por el cliente: "{query_text}"
+    Responde ÚNICAMENTE en formato JSON plano sin bloques de código markdown:
+    {{
+        "category": "MECÁNICA",
+        "urgency": "ALTA",
+        "department": "TALLER_MECANICO",
+        "summary": "Resumen conciso en 1 frase",
+        "estimated_sla": "24h"
+    }}
+    Categorías permitidas: MECÁNICA, ELÉCTRICA, HABITABILIDAD, OTROS.
+    Urgencias permitidas: ALTA, MEDIA, BAJA.
+    Departamentos: TALLER_MECANICO, ELECTRO_SISTEMAS, SOPORTE_GENERAL.
+    SLAs: 24h, 48h, 72h.
+    """
+    
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    headers = {"Content-Type": "application/json"}
 
-        Responde ÚNICAMENTE en formato JSON plano con esta estructura:
-        {{
-            "category": "MECÁNICA" | "ELÉCTRICA" | "HABITABILIDAD" | "OTROS",
-            "urgency": "ALTA" | "MEDIA" | "BAJA",
-            "department": "TALLER_MECANICO" | "ELECTRO_SISTEMAS" | "SOPORTE_GENERAL",
-            "summary": "Resumen conciso en 1 frase",
-            "estimated_sla": "24h" | "48h" | "72h"
-        }}
-        """
-        response = model.generate_content(prompt)
-        text = response.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(text)
-    except Exception as e:
-        print(f"[GEMINI API WARNING] {e}. Ejecutando triaje local de respaldo.")
-        return get_fallback_triage(query_text)
+    for model in candidate_models:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+            response = requests.post(url, json=payload, headers=headers, timeout=6)
+            
+            if response.status_code == 200:
+                res_data = response.json()
+                raw_text = res_data['candidates'][0]['content']['parts'][0]['text']
+                clean_json = raw_text.replace("```json", "").replace("```", "").strip()
+                print(f"[GEMINI SUCCESS] Triaje procesado con éxito mediante modelo: {model}")
+                return json.loads(clean_json)
+            else:
+                print(f"[GEMINI WARN] Modelo {model} devolvió status {response.status_code}. Probando siguiente...")
+        except Exception as e:
+            print(f"[GEMINI ERROR] Fallo al consultar modelo {model}: {e}. Probando siguiente...")
 
+    # Fallback automático local si fallan todos los endpoints externos
+    print("[GEMINI FALLBACK] Aplicando motor de reglas local.")
+    return get_fallback_triage(query_text)
 
-    # Si Render no tiene acceso a internet saliente SMTP o no hay variables, se simula limpia en logs
-    if not smtp_user or not smtp_password:
-        print(f"[EMAIL SIMULATED] Notificación enviada a {to_email} | Asunto: {subject}")
-        return
-
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"Stella Support <{smtp_user}>"
-        msg["To"] = to_email
-        msg.attach(MIMEText(body_html, "html"))
-
-        with smtplib.SMTP_SSL(smtp_server, 465, timeout=5) as server:
-            server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, to_email, msg.as_string())
-        print(f"[EMAIL SENT] Correo enviado exitosamente a {to_email}")
-    except Exception:
-        print(f"[EMAIL NOTIFICATION LOG] Correo registrado para {to_email} (Salida SMTP bloqueada en Render).")
 
 def get_fallback_triage(query_text: str) -> dict:
-    """Reglas de triaje locales por defecto."""
+    """Reglas de triaje locales por defecto cuando no hay respuesta del modelo."""
     text_lower = query_text.lower()
-    if any(w in text_lower for w in ["batería", "bateria", "luces", "panel", "freno", "motor"]):
+    if any(w in text_lower for w in ["batería", "bateria", "luces", "panel", "freno", "motor", "fusible"]):
+        is_elec = any(w in text_lower for w in ["batería", "bateria", "luces", "panel", "fusible"])
         return {
-            "category": "ELÉCTRICA" if "batería" in text_lower or "luces" in text_lower else "MECÁNICA",
+            "category": "ELÉCTRICA" if is_elec else "MECÁNICA",
             "urgency": "ALTA",
-            "department": "ELECTRO_SISTEMAS" if "batería" in text_lower else "TALLER_MECANICO",
-            "summary": "Incidencia crítica en sistemas principales detectada.",
+            "department": "ELECTRO_SISTEMAS" if is_elec else "TALLER_MECANICO",
+            "summary": "Incidencia crítica en subsistemas principales detectada.",
             "estimated_sla": "24h"
         }
     return {
@@ -84,31 +77,33 @@ def get_fallback_triage(query_text: str) -> dict:
         "estimated_sla": "48h"
     }
 
-def send_status_email(to_email: str, subject: str, body_html: str):
-    """Envío de correo mediante la API REST de Resend por puerto 443 (libre de bloqueos cloud)."""
-    resend_api_key = os.environ.get("RESEND_API_KEY", "")
 
-    if not resend_api_key:
+def send_status_email(to_email: str, subject: str, body_html: str):
+    """Envío real por Resend API (puerto 443) redirigido a tu correo para la demostración en vídeo."""
+    if not RESEND_API_KEY:
         print(f"[EMAIL SIMULATED] Para: {to_email} | Asunto: {subject}")
         return
 
+    # Redirección para garantizar entrega real en tu bandeja de entrada durante la demo
+    demo_recipient = "garciaguadalupevanessa@outlook.es"
+
     url = "https://api.resend.com/emails"
     headers = {
-        "Authorization": f"Bearer {resend_api_key}",
+        "Authorization": f"Bearer {RESEND_API_KEY}",
         "Content-Type": "application/json"
     }
     payload = {
         "from": "Stella Smart Camper <onboarding@resend.dev>",
-        "to": [to_email],
-        "subject": subject,
-        "html": body_html
+        "to": [demo_recipient],
+        "subject": f"[Stella Support] {subject} (Destinatario: {to_email})",
+        "html": f"<p><strong>[Aviso de Notificación enviado a: {to_email}]</strong></p><hr>" + body_html
     }
 
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=5)
         if response.status_code in [200, 201]:
-            print(f"[EMAIL SENT] Correo entregado con éxito a {to_email} vía Resend API")
+            print(f"[EMAIL DELIVERED] Correo entregado en bandeja real {demo_recipient} vía Resend API")
         else:
             print(f"[EMAIL API WARN] Status {response.status_code}: {response.text}")
     except Exception as e:
-        print(f"[EMAIL ERROR] Fallo en conexión con API de correo: {e}")
+        print(f"[EMAIL ERROR] Fallo en la API de correo: {e}")
