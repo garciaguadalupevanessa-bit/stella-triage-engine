@@ -1,14 +1,15 @@
-from fastapi import FastAPI, Request, HTTPException, Depends
+import os
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.database import engine, Base
 from app.routers import auth, tickets
 
 # Inicializar tablas en la Base de Datos (PostgreSQL/SQLite)
-# NO usar drop_all en producción para no perder el histórico de tickets
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -16,6 +17,15 @@ app = FastAPI(
     description="AI-powered triage for Smart Eco Camper Vans, lifecycle management, and SAP MM integration",
     version="1.0.0"
 )
+
+# Garantizar y resolver la ruta absoluta de la carpeta static
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 templates = Jinja2Templates(directory="templates")
 
@@ -46,4 +56,3 @@ def login(data: LoginRequest):
         return {"role": "tech", "token": "session_tech"}
     else:
         raise HTTPException(status_code=401, detail="Contraseña incorrecta")
-    
