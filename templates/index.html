@@ -52,7 +52,7 @@
                         <i data-lucide="plus-circle" class="text-indigo-400"></i>
                         <span>Asistencia e Incidencias en Ruta</span>
                     </h2>
-                    <p class="text-xs text-slate-400 mt-1">Notifica cualquier eventualidad con tu van ecológica. Nuestro motor de IA priorizará tu solicitud inmediatamente.</p>
+                    <p class="text-xs text-slate-400 mt-1">Notifica cualquier eventualidad con tu van ecológica. Nuestro motor de IA priorización tu solicitud inmediatamente.</p>
                 </div>
 
                 <form id="create-ticket-form" onsubmit="handleCreateTicket(event)" class="space-y-4">
@@ -161,84 +161,67 @@
         let currentAdminFilter = 'PENDING_ADMIN_REVIEW';
         let currentTechFilter = 'ASSIGNED_TO_TECHNICAL';
 
-    function switchTab(role) {
-    // La pestaña de cliente/usuario es siempre pública
-    if (role === 'user') {
-        activateTab('user');
-        return;
-    }
-
-    // Validación para la pestaña de Gobernanza Flota
-    if (role === 'admin') {
-        const auth = sessionStorage.getItem('auth_role');
-        if (auth !== 'admin') {
-            const pass = prompt("Acceso Restringido - Gobernanza Flota\nIntroduce la contraseña:");
-            if (pass === "admin123") {
-                sessionStorage.setItem('auth_role', 'admin');
-            } else if (pass !== null) {
-                alert("Contraseña incorrecta para Gobernanza");
+        function switchTab(role) {
+            if (role === 'user') {
+                activateTab('user');
                 return;
-            } else {
-                return; // Si pulsa cancelar en el prompt
+            }
+
+            if (role === 'admin') {
+                const auth = sessionStorage.getItem('auth_role');
+                if (auth !== 'admin') {
+                    const pass = prompt("Acceso Restringido - Gobernanza Flota\nIntroduce la contraseña:");
+                    if (pass === "admin123") {
+                        sessionStorage.setItem('auth_role', 'admin');
+                    } else if (pass !== null) {
+                        alert("Contraseña incorrecta para Gobernanza");
+                        return;
+                    } else {
+                        return;
+                    }
+                }
+                activateTab('admin');
+                return;
+            }
+
+            if (role === 'tech') {
+                const auth = sessionStorage.getItem('auth_role');
+                if (auth !== 'tech' && auth !== 'admin') {
+                    const pass = prompt("Acceso Técnico & SAP MM\nIntroduce la contraseña:");
+                    if (pass === "tech123") {
+                        sessionStorage.setItem('auth_role', 'tech');
+                    } else if (pass !== null) {
+                        alert("Contraseña incorrecta para Técnico");
+                        return;
+                    } else {
+                        return;
+                    }
+                }
+                activateTab('tech');
+                return;
             }
         }
-        activateTab('admin');
-        return;
-    }
 
-    // Validación para la pestaña de Técnico & SAP MM
-    if (role === 'tech') {
-        const auth = sessionStorage.getItem('auth_role');
-        if (auth !== 'tech' && auth !== 'admin') {
-            const pass = prompt("Acceso Técnico & SAP MM\nIntroduce la contraseña:");
-            if (pass === "tech123") {
-                sessionStorage.setItem('auth_role', 'tech');
-            } else if (pass !== null) {
-                alert("Contraseña incorrecta para Técnico");
-                return;
-            } else {
-                return; // Si pulsa cancelar en el prompt
-            }
+        function activateTab(role) {
+            ['user', 'admin', 'tech'].forEach(r => {
+                const viewEl = document.getElementById(`view-${r}`);
+                const tabEl = document.getElementById(`tab-${r}`);
+                if (viewEl) viewEl.classList.add('hidden');
+                if (tabEl) tabEl.className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white';
+            });
+
+            const activeView = document.getElementById(`view-${role}`);
+            const activeTab = document.getElementById(`tab-${role}`);
+            if (activeView) activeView.classList.remove('hidden');
+            if (activeTab) activeTab.className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-indigo-600 text-white';
+
+            loadTickets();
         }
-        activateTab('tech');
-        return;
-    }
-}
-
-function activateTab(role) {
-    ['user', 'admin', 'tech'].forEach(r => {
-        const viewEl = document.getElementById(`view-${r}`);
-        const tabEl = document.getElementById(`tab-${r}`);
-        if (viewEl) viewEl.classList.add('hidden');
-        if (tabEl) tabEl.className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white';
-    });
-
-    const activeView = document.getElementById(`view-${role}`);
-    const activeTab = document.getElementById(`tab-${role}`);
-    if (activeView) activeView.classList.remove('hidden');
-    if (activeTab) activeTab.className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-indigo-600 text-white';
-
-    if (typeof loadTickets === 'function') {
-        loadTickets();
-    }
-}
-
-
-    // Cambiar de vista en la interfaz
-    ['user', 'admin', 'tech'].forEach(r => {
-        document.getElementById(`view-${r}`).classList.add('hidden');
-        document.getElementById(`tab-${r}`).className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white';
-    });
-    
-    document.getElementById(`view-${role}`).classList.remove('hidden');
-    document.getElementById(`tab-${role}`).className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-indigo-600 text-white';
-    
-    loadTickets();
-}
 
         async function loadTickets() {
             try {
                 const res = await fetch(`${API_URL}/tickets`);
+                if (!res.ok) return;
                 globalTickets = await res.json();
                 renderAdminTickets();
                 renderTechTickets();
@@ -279,20 +262,51 @@ function activateTab(role) {
                 query: document.getElementById('query-input').value
             };
 
-            const res = await fetch(`${API_URL}/tickets`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            
-            const ticket = await res.json();
-            document.getElementById('create-ticket-form').reset();
-            alert(`Incidencia #${ticket.id} registrada correctamente.\nEstimación de solución (SLA): ${ticket.estimated_sla}`);
-            switchTab('admin');
+            try {
+                const res = await fetch(`${API_URL}/tickets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) throw new Error("No se pudo procesar la incidencia");
+
+                const ticket = await res.json();
+                document.getElementById('create-ticket-form').reset();
+
+                // Ventana modal emergente profesional con el resultado del triaje e IA SLA
+                const modalHtml = `
+                    <div id="successModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl text-slate-100">
+                            <div class="flex items-center space-x-3 text-emerald-400 mb-4">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <h3 class="text-xl font-bold">¡Incidencia Registrada!</h3>
+                            </div>
+                            <p class="text-slate-300 text-sm mb-4">La IA ha analizado el reporte y asignado la siguiente prioridad:</p>
+                            <div class="bg-slate-900/60 rounded-xl p-4 space-y-2 border border-slate-700/50 text-sm">
+                                <p><strong class="text-slate-400">ID Ticket:</strong> #${ticket.id}</p>
+                                <p><strong class="text-slate-400">Categoría:</strong> <span class="text-indigo-400 font-semibold">${ticket.category || 'N/A'}</span></p>
+                                <p><strong class="text-slate-400">Urgencia:</strong> <span class="text-amber-400 font-semibold">${ticket.urgency || 'N/A'}</span></p>
+                                <p><strong class="text-slate-400">SLA Estimado:</strong> <span class="text-emerald-400 font-bold">${ticket.estimated_sla || '24h'}</span></p>
+                                <p><strong class="text-slate-400">Resumen IA:</strong> ${ticket.summary || 'En proceso'}</p>
+                            </div>
+                            <button onclick="document.getElementById('successModal').remove(); loadTickets();" class="mt-6 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition">
+                                Aceptar y Volver
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            } catch (err) {
+                alert("Error al registrar la incidencia: " + err.message);
+            }
         }
 
         function renderAdminTickets() {
             const container = document.getElementById('admin-tickets-container');
+            if (!container) return;
+
             let filtered = globalTickets;
             if (currentAdminFilter !== 'ALL') {
                 filtered = globalTickets.filter(t => t.status === currentAdminFilter);
@@ -380,6 +394,8 @@ function activateTab(role) {
 
         function renderTechTickets() {
             const container = document.getElementById('tech-tickets-container');
+            if (!container) return;
+
             let filtered = globalTickets;
             if (currentTechFilter !== 'ALL') {
                 filtered = globalTickets.filter(t => t.status === currentTechFilter);
@@ -420,11 +436,11 @@ function activateTab(role) {
                         <div class="bg-slate-900 border border-slate-800 p-3.5 rounded-xl text-xs space-y-1.5">
                             <div class="text-amber-400 font-semibold flex items-center space-x-1">
                                 <i data-lucide="package" class="w-4 h-4"></i>
-                                <span>Solicitud de Pedido (SolPed SAP): #${t.sap_solped_id}</span>
+                                <span>Solicitud de Pedido (SolPed SAP): #${t.sap_solped_id || 'SOLPED-GENERATED'}</span>
                             </div>
-                            <div class="text-slate-300">Material Requerido: <span class="font-mono text-indigo-300">${t.sap_material_id}</span></div>
-                            <div class="text-slate-400">Estado SAP MM: ${t.sap_status}</div>
-                            <div class="text-amber-300">SLA Actualizado: ${t.estimated_sla}</div>
+                            <div class="text-slate-300">Material Requerido: <span class="font-mono text-indigo-300">${t.sap_material_id || 'MAT-VAN-ECO-PARTS'}</span></div>
+                            <div class="text-slate-400">Estado SAP MM: ${t.sap_status || 'PENDING'}</div>
+                            <div class="text-amber-300">SLA Actualizado: ${t.estimated_sla || 'N/A'}</div>
                         </div>
                     `;
                     actionButtons = `
@@ -455,7 +471,7 @@ function activateTab(role) {
                 return `
                     <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-3">
                         <div class="flex justify-between items-start">
-                            <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id} - Matrícula: ${t.van_license_plate}</span>
+                            <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">ID #${t.id} - Matrícula: ${t.van_license_plate || 'N/A'}</span>
                             ${statusBadge}
                         </div>
                         <p class="text-slate-200 font-medium">${t.query}</p>
