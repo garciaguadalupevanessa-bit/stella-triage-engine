@@ -1,13 +1,14 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from app.database import engine, Base
 from app.routers import auth, tickets
 
-# Forzar la recreación limpia de tablas en PostgreSQL con la nueva estructura
-Base.metadata.drop_all(bind=engine)
+# Inicializar tablas en la Base de Datos (PostgreSQL/SQLite)
+# NO usar drop_all en producción para no perder el histórico de tickets
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -33,3 +34,16 @@ app.include_router(tickets.router)
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
+
+class LoginRequest(BaseModel):
+    password: str
+
+@app.post("/auth/login")
+def login(data: LoginRequest):
+    if data.password == "admin123":
+        return {"role": "admin", "token": "session_admin"}
+    elif data.password == "tech123":
+        return {"role": "tech", "token": "session_tech"}
+    else:
+        raise HTTPException(status_code=401, detail="Contraseña incorrecta")
+    
