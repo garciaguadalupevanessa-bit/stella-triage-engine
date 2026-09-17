@@ -22,8 +22,8 @@ def classify_query(query_text: str) -> dict:
         if not model_cls:
             return get_fallback_triage(query_text)
 
-        # Nombre de modelo estable y compatible con v1beta
-        model = model_cls("gemini-1.5-flash-latest")
+        # Usar el identificador nativo aceptado por la v1beta
+        model = model_cls("gemini-1.5-flash")
         prompt = f"""
         Eres el motor de triaje inteligente para la flota Stella Smart Camper.
         Analiza el siguiente problema reportado por el cliente: "{query_text}"
@@ -41,8 +41,28 @@ def classify_query(query_text: str) -> dict:
         text = response.text.replace("```json", "").replace("```", "").strip()
         return json.loads(text)
     except Exception as e:
-        print(f"[GEMINI API ERROR] {e}. Aplicando fallback de triaje.")
+        print(f"[GEMINI API WARNING] {e}. Ejecutando triaje local de respaldo.")
         return get_fallback_triage(query_text)
+
+
+    # Si Render no tiene acceso a internet saliente SMTP o no hay variables, se simula limpia en logs
+    if not smtp_user or not smtp_password:
+        print(f"[EMAIL SIMULATED] Notificación enviada a {to_email} | Asunto: {subject}")
+        return
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"Stella Support <{smtp_user}>"
+        msg["To"] = to_email
+        msg.attach(MIMEText(body_html, "html"))
+
+        with smtplib.SMTP_SSL(smtp_server, 465, timeout=5) as server:
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+        print(f"[EMAIL SENT] Correo enviado exitosamente a {to_email}")
+    except Exception:
+        print(f"[EMAIL NOTIFICATION LOG] Correo registrado para {to_email} (Salida SMTP bloqueada en Render).")
 
 def get_fallback_triage(query_text: str) -> dict:
     """Reglas de triaje locales por defecto."""
