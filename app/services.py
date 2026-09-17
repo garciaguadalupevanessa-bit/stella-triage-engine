@@ -1,6 +1,7 @@
 import os
 import json
 import smtplib
+import requests
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import google.generativeai as genai
@@ -84,40 +85,30 @@ def get_fallback_triage(query_text: str) -> dict:
     }
 
 def send_status_email(to_email: str, subject: str, body_html: str):
-    """Envía correos mediante SMTP con fallback automático de puertos para entornos restringidos."""
-    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", 587))
-    smtp_user = os.environ.get("SMTP_USER", "")
-    smtp_password = os.environ.get("SMTP_PASSWORD", "")
+    """Envío de correo mediante la API REST de Resend por puerto 443 (libre de bloqueos cloud)."""
+    resend_api_key = os.environ.get("RESEND_API_KEY", "")
 
-    if not smtp_user or not smtp_password:
+    if not resend_api_key:
         print(f"[EMAIL SIMULATED] Para: {to_email} | Asunto: {subject}")
         return
 
+    url = "https://api.resend.com/emails"
+    headers = {
+        "Authorization": f"Bearer {resend_api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "from": "Stella Smart Camper <onboarding@resend.dev>",
+        "to": [to_email],
+        "subject": subject,
+        "html": body_html
+    }
+
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"Stella Support <{smtp_user}>"
-        msg["To"] = to_email
-        msg.attach(MIMEText(body_html, "html"))
-
-        # Intento principal: STARTTLS en puerto 587
-        try:
-            with smtplib.SMTP(smtp_server, 587, timeout=15) as server:
-                server.ehlo()
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.sendmail(smtp_user, to_email, msg.as_string())
-            print(f"[EMAIL SENT] Correo enviado exitosamente a {to_email} via 587 TLS")
-            return
-        except Exception as e587:
-            print(f"[EMAIL TLS WARN] Puerto 587 falló ({e587}). Reintentando via puerto 465 SSL...")
-
-        # Intento fallback: SSL directo en puerto 465
-        with smtplib.SMTP_SSL(smtp_server, 465, timeout=15) as server:
-            server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, to_email, msg.as_string())
-        print(f"[EMAIL SENT] Correo enviado exitosamente a {to_email} via 465 SSL")
-
+        response = requests.post(url, json=payload, headers=headers, timeout=5)
+        if response.status_code in [200, 201]:
+            print(f"[EMAIL SENT] Correo entregado con éxito a {to_email} vía Resend API")
+        else:
+            print(f"[EMAIL API WARN] Status {response.status_code}: {response.text}")
     except Exception as e:
-        print(f"[EMAIL ERROR] No se pudo conectar con el servidor de correo: {e}")
+        print(f"[EMAIL ERROR] Fallo en conexión con API de correo: {e}")
