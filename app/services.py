@@ -64,9 +64,9 @@ def get_fallback_triage(query_text: str) -> dict:
     }
 
 def send_status_email(to_email: str, subject: str, body_html: str):
-    """Envía un correo con SSL o TLS según configuración."""
+    """Envía correos mediante SMTP con fallback automático de puertos para entornos restringidos."""
     smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", 465))
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
     smtp_user = os.environ.get("SMTP_USER", "")
     smtp_password = os.environ.get("SMTP_PASSWORD", "")
 
@@ -81,16 +81,23 @@ def send_status_email(to_email: str, subject: str, body_html: str):
         msg["To"] = to_email
         msg.attach(MIMEText(body_html, "html"))
 
-        if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10) as server:
-                server.login(smtp_user, smtp_password)
-                server.sendmail(smtp_user, to_email, msg.as_string())
-        else:
-            with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
+        # Intento principal: STARTTLS en puerto 587
+        try:
+            with smtplib.SMTP(smtp_server, 587, timeout=15) as server:
+                server.ehlo()
                 server.starttls()
                 server.login(smtp_user, smtp_password)
                 server.sendmail(smtp_user, to_email, msg.as_string())
+            print(f"[EMAIL SENT] Correo enviado exitosamente a {to_email} via 587 TLS")
+            return
+        except Exception as e587:
+            print(f"[EMAIL TLS WARN] Puerto 587 falló ({e587}). Reintentando via puerto 465 SSL...")
 
-        print(f"[EMAIL SENT] Correo enviado exitosamente a {to_email}")
+        # Intento fallback: SSL directo en puerto 465
+        with smtplib.SMTP_SSL(smtp_server, 465, timeout=15) as server:
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+        print(f"[EMAIL SENT] Correo enviado exitosamente a {to_email} via 465 SSL")
+
     except Exception as e:
-        print(f"[EMAIL ERROR] Error enviando correo: {e}")
+        print(f"[EMAIL ERROR] No se pudo conectar con el servidor de correo: {e}")
