@@ -161,64 +161,68 @@
         let currentAdminFilter = 'PENDING_ADMIN_REVIEW';
         let currentTechFilter = 'ASSIGNED_TO_TECHNICAL';
 
-        async function switchTab(role) {
-            if (role === 'admin') {
-                const auth = sessionStorage.getItem('auth_role');
-                if (auth !== 'admin') {
-                    const pass = prompt("Acceso Restringido - Gobernanza Flota\nIntroduce la contraseña:");
-                    if (!pass) return;
+    function switchTab(role) {
+    // La pestaña de cliente/usuario es siempre pública
+    if (role === 'user') {
+        activateTab('user');
+        return;
+    }
 
-                try {
-                    const res = await fetch(`${API_URL}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: pass })
-                    });
-                    const data = await res.json();
-                    if (res.ok && data.role === 'admin') {
-                        sessionStorage.setItem('auth_role', 'admin');
-                    } else {
-                        alert("Contraseña incorrecta para Gobernanza");
-                        return;
-                    }
-                } catch (err) {
-                    if (pass === "admin123") {
-                        sessionStorage.setItem('auth_role', 'admin');
-                    } else {
-                        alert("Contraseña incorrecta");
-                        return;
-                }
+    // Validación para la pestaña de Gobernanza Flota
+    if (role === 'admin') {
+        const auth = sessionStorage.getItem('auth_role');
+        if (auth !== 'admin') {
+            const pass = prompt("Acceso Restringido - Gobernanza Flota\nIntroduce la contraseña:");
+            if (pass === "admin123") {
+                sessionStorage.setItem('auth_role', 'admin');
+            } else if (pass !== null) {
+                alert("Contraseña incorrecta para Gobernanza");
+                return;
+            } else {
+                return; // Si pulsa cancelar en el prompt
             }
         }
-    } else if (role === 'tech') {
+        activateTab('admin');
+        return;
+    }
+
+    // Validación para la pestaña de Técnico & SAP MM
+    if (role === 'tech') {
         const auth = sessionStorage.getItem('auth_role');
         if (auth !== 'tech' && auth !== 'admin') {
             const pass = prompt("Acceso Técnico & SAP MM\nIntroduce la contraseña:");
-            if (!pass) return;
-
-            try {
-                const res = await fetch(`${API_URL}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: pass })
-                });
-                const data = await res.json();
-                if (res.ok && (data.role === 'tech' || data.role === 'admin')) {
-                    sessionStorage.setItem('auth_role', data.role);
-                } else {
-                    alert("Contraseña incorrecta para Técnico");
-                    return;
-                }
-            } catch (err) {
-                if (pass === "tech123") {
-                    sessionStorage.setItem('auth_role', 'tech');
-                } else {
-                    alert("Contraseña incorrecta");
-                    return;
-                }
+            if (pass === "tech123") {
+                sessionStorage.setItem('auth_role', 'tech');
+            } else if (pass !== null) {
+                alert("Contraseña incorrecta para Técnico");
+                return;
+            } else {
+                return; // Si pulsa cancelar en el prompt
             }
         }
+        activateTab('tech');
+        return;
     }
+}
+
+function activateTab(role) {
+    ['user', 'admin', 'tech'].forEach(r => {
+        const viewEl = document.getElementById(`view-${r}`);
+        const tabEl = document.getElementById(`tab-${r}`);
+        if (viewEl) viewEl.classList.add('hidden');
+        if (tabEl) tabEl.className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 text-slate-400 hover:text-white';
+    });
+
+    const activeView = document.getElementById(`view-${role}`);
+    const activeTab = document.getElementById(`tab-${role}`);
+    if (activeView) activeView.classList.remove('hidden');
+    if (activeTab) activeTab.className = 'px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-2 bg-indigo-600 text-white';
+
+    if (typeof loadTickets === 'function') {
+        loadTickets();
+    }
+}
+
 
     // Cambiar de vista en la interfaz
     ['user', 'admin', 'tech'].forEach(r => {
